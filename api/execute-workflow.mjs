@@ -1,19 +1,26 @@
 const { createClient } = require('@supabase/supabase-js');
 
 module.exports = async function handler(req, res) {
+  // Logs détaillés (visibles dans les logs Vercel)
   console.log('=== execute-workflow called ===');
   console.log('Method:', req.method);
+  console.log('Headers:', req.headers);
   console.log('Body:', req.body);
 
-  // Vérifier la méthode
+  // 1. Vérifier la méthode
   if (req.method !== 'POST') {
+    console.log('Method not allowed');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Vérifier les variables d'env
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('Missing Supabase environment variables');
-    return res.status(500).json({ error: 'Configuration error' });
+  // 2. Vérifier les variables d'environnement
+  if (!process.env.SUPABASE_URL) {
+    console.error('❌ SUPABASE_URL manquante');
+    return res.status(500).json({ error: 'Configuration error: missing SUPABASE_URL' });
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('❌ SUPABASE_SERVICE_ROLE_KEY manquante');
+    return res.status(500).json({ error: 'Configuration error: missing SERVICE_ROLE_KEY' });
   }
 
   const supabase = createClient(
@@ -23,11 +30,12 @@ module.exports = async function handler(req, res) {
 
   const { workflowId } = req.body;
   if (!workflowId) {
+    console.log('workflowId manquant');
     return res.status(400).json({ error: 'workflowId manquant' });
   }
 
   try {
-    // Récupérer le workflow
+    // 3. Récupérer le workflow
     const { data: workflow, error } = await supabase
       .from('workflows')
       .select('*')
@@ -35,20 +43,23 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (error) {
-      console.error('Supabase error fetching workflow:', error);
-      return res.status(404).json({ error: 'Workflow non trouvé', details: error.message });
+      console.error('❌ Erreur Supabase lors de la récupération du workflow:', error);
+      // Envoyer l'erreur détaillée seulement en développement, en production masquer
+      return res.status(500).json({ error: 'Erreur base de données', details: error.message });
     }
 
     if (!workflow) {
+      console.log('Workflow non trouvé pour id:', workflowId);
       return res.status(404).json({ error: 'Workflow non trouvé' });
     }
 
-    console.log('Workflow found:', workflow.name);
+    console.log('✅ Workflow trouvé:', workflow.name, 'type:', workflow.type);
 
-    // Simuler une exécution (remplacer par la vraie logique plus tard)
-    // Par exemple, envoyer un email, déclencher un webhook, etc.
+    // 4. Simuler une exécution (vous mettrez votre vraie logique ici)
+    // Par exemple : envoyer un email, déclencher un webhook, etc.
+    console.log('Exécution simulée du workflow...');
 
-    // Essayer d'enregistrer un log (si la table existe)
+    // 5. Enregistrer un log d'exécution (optionnel)
     try {
       const { error: logError } = await supabase
         .from('workflow_logs')
@@ -59,25 +70,24 @@ module.exports = async function handler(req, res) {
         });
 
       if (logError) {
-        // Si la table n'existe pas, on log juste l'erreur mais on ne fait pas échouer la requête
-        console.warn('Could not insert into workflow_logs (maybe table missing):', logError.message);
+        console.warn('⚠️ Échec de l’insertion dans workflow_logs (table manquante ?) :', logError.message);
       } else {
-        console.log('Execution logged successfully');
+        console.log('✅ Log enregistré avec succès');
       }
     } catch (logErr) {
-      console.warn('Error while logging execution:', logErr.message);
+      console.warn('⚠️ Exception lors du log :', logErr.message);
     }
 
-    // Répondre avec succès
-    return res.status(200).json({ 
-      success: true, 
+    // 6. Réponse de succès
+    return res.status(200).json({
+      success: true,
       message: 'Workflow exécuté avec succès',
       workflowId: workflow.id,
       name: workflow.name
     });
 
   } catch (err) {
-    console.error('Unhandled error in execute-workflow:', err);
+    console.error('❌ Exception non gérée dans execute-workflow:', err);
     return res.status(500).json({ error: 'Erreur interne du serveur', details: err.message });
   }
 };
