@@ -10,10 +10,20 @@
 <body class="bg-gray-50 flex items-center justify-center min-h-screen">
     <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
         <h1 class="text-2xl font-bold text-center text-blue-600 mb-6">Sécurisez votre compte</h1>
-        <p class="text-gray-600 mb-4">Scannez ce QR code avec Google Authenticator ou une application compatible, puis entrez le code à 6 chiffres.</p>
+        
+        <!-- Zone de débogage (invisible normalement mais utile pour nous) -->
+        <div id="debug" class="mb-4 p-2 bg-yellow-100 text-sm hidden"></div>
         
         <div id="qrcode-container" class="flex justify-center mb-4">
-            <div id="qrcode" class="border p-2 rounded"></div>
+            <div id="qrcode" class="border p-2 rounded">
+                <p class="text-gray-500">Génération du QR code...</p>
+            </div>
+        </div>
+
+        <!-- Lien manuel au cas où le QR code ne fonctionne pas -->
+        <div id="manual-uri" class="mb-4 text-center text-sm hidden">
+            <p>Si le QR code ne s'affiche pas, utilisez ce lien :</p>
+            <a id="uri-link" href="#" target="_blank" class="text-blue-600 break-all"></a>
         </div>
 
         <form id="mfa-form">
@@ -25,33 +35,73 @@
         </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script>
         const SUPABASE_URL = 'https://sqzovftrdjcjpahpifnx.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_Pvcew-turPW9IoFTJajAwA_YbAlWc11';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let factorId = null;
+        const debugDiv = document.getElementById('debug');
+        const manualDiv = document.getElementById('manual-uri');
+        const uriLink = document.getElementById('uri-link');
+        const qrcodeDiv = document.getElementById('qrcode');
+
+        function log(message, isError = false) {
+            console.log(message);
+            debugDiv.classList.remove('hidden');
+            debugDiv.innerHTML += '<br>' + message;
+            if (isError) {
+                debugDiv.classList.add('bg-red-100');
+            }
+        }
 
         async function setupMFA() {
-            const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-            if (userError || !user) {
-                alert('Vous devez être connecté.');
-                window.location.href = 'login.html';
-                return;
-            }
+            try {
+                // Vérifier l'utilisateur
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                if (userError) {
+                    log('Erreur récupération utilisateur : ' + userError.message, true);
+                    return;
+                }
+                if (!user) {
+                    log('Aucun utilisateur connecté, redirection...');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                log('Utilisateur connecté : ' + user.email);
 
-            const { data, error } = await supabaseClient.auth.mfa.enroll({ factorType: 'totp' });
-            if (error) {
-                alert('Erreur lors de la création MFA : ' + error.message);
-                return;
-            }
+                // Créer le facteur MFA
+                const { data, error } = await supabaseClient.auth.mfa.enroll({ factorType: 'totp' });
+                if (error) {
+                    log('Erreur enroll MFA : ' + error.message, true);
+                    qrcodeDiv.innerHTML = '<p class="text-red-500">Erreur : ' + error.message + '</p>';
+                    return;
+                }
 
-            factorId = data.id;
-            const qr = qrcode(0, 'M');
-            qr.addData(data.totp.uri);
-            qr.make();
-            document.getElementById('qrcode').innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
+                factorId = data.id;
+                const uri = data.totp.uri;
+                log('URI TOTP reçue, longueur : ' + uri.length);
+
+                // Afficher le lien manuel
+                uriLink.href = uri;
+                uriLink.textContent = uri.substring(0, 50) + '...';
+                manualDiv.classList.remove('hidden');
+
+                // Essayer avec Google Charts
+                const qrCodeUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(uri)}`;
+                qrcodeDiv.innerHTML = `<img src="${qrCodeUrl}" alt="QR Code" class="w-48 h-48" onerror="this.onerror=null; this.src=''; this.alt='Erreur chargement QR code';">`;
+                
+                // Si l'image ne charge pas, on garde le lien manuel
+                const img = qrcodeDiv.querySelector('img');
+                img.onerror = () => {
+                    log('Échec du chargement de l\'image QR code', true);
+                    qrcodeDiv.innerHTML = '<p class="text-red-500">Le QR code n\'a pas pu être chargé. Utilisez le lien manuel ci-dessous.</p>';
+                };
+
+            } catch (err) {
+                log('Exception : ' + err.message, true);
+                qrcodeDiv.innerHTML = '<p class="text-red-500">Erreur : ' + err.message + '</p>';
+            }
         }
 
         setupMFA();
@@ -60,7 +110,10 @@
             e.preventDefault();
             const code = document.getElementById('code').value;
 
-            if (!factorId) return;
+            if (!factorId) {
+                alert('En attente de la configuration MFA, veuillez patienter.');
+                return;
+            }
 
             try {
                 const { error } = await supabaseClient.auth.mfa.challengeAndVerify({ factorId, code });
