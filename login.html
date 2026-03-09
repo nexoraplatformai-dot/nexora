@@ -65,35 +65,26 @@
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
 
-    <script>
-        const SUPABASE_URL = 'https://sqzovftrdjcjpahpifnx.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_Pvcew-turPW9IoFTJajAwA_YbAlWc11';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            try {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-
-                // Vérifier MFA
-                const { data: factors, error: mfaError } = await supabase.auth.mfa.listFactors();
-                if (mfaError) throw mfaError;
-
-                const hasMfa = factors.totp && factors.totp.length > 0;
-                if (!hasMfa) {
-                    alert('Vous devez configurer l\'authentification à deux facteurs.');
-                    window.location.href = 'profile.html?setup=mfa';
-                } else {
-                    window.location.href = 'mfa-verify.html';
-                }
-            } catch (err) {
-                alert('Erreur : ' + err.message);
+<script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        try {
+            const { data, error } = await signIn(email, password);
+            if (error) throw error;
+            const factors = await listFactors();
+            const hasMfa = factors.data?.totp?.length > 0;
+            if (!hasMfa) {
+                alert('Vous devez configurer l\'authentification à deux facteurs.');
+                window.location.href = 'mfa-setup.html';
+            } else {
+                window.location.href = 'mfa-verify.html';
             }
-        });
-    </script>
+        } catch (err) {
+            alert('Erreur : ' + err.message);
+        }
+    });
+</script>
 </body>
 </html>

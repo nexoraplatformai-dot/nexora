@@ -64,5 +64,20 @@
 
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
+	<script>
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        try {
+            const { data, error } = await signUp(email, password);
+            if (error) throw error;
+            alert('Inscription réussie ! Veuillez configurer l\'authentification à deux facteurs.');
+            window.location.href = 'mfa-setup.html';
+        } catch (err) {
+            alert('Erreur : ' + err.message);
+        }
+    });
+</script>
 </body>
 </html>
