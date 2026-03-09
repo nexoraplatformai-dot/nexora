@@ -71,6 +71,14 @@
     </main>
 
     <script>
+	function showNotification(message, type = 'success') {
+    const container = document.getElementById('notification-container');
+    const notif = document.createElement('div');
+    notif.className = `notification ${type}`;
+    notif.textContent = message;
+    container.appendChild(notif);
+    setTimeout(() => notif.remove(), 3000);
+}
         (async function() {
             // Vérifier la session (supabaseClient est global)
             const { data: { user }, error } = await window.supabaseClient.auth.getUser();

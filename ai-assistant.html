@@ -94,6 +94,14 @@
     <script src="js/auth.js"></script>
     <script src="js/ai.js"></script>
     <script>
+	function showNotification(message, type = 'success') {
+    const container = document.getElementById('notification-container');
+    const notif = document.createElement('div');
+    notif.className = `notification ${type}`;
+    notif.textContent = message;
+    container.appendChild(notif);
+    setTimeout(() => notif.remove(), 3000);
+}
         // Vérification authentification et MFA
         (async () => {
             const { user, error } = await getCurrentUser();

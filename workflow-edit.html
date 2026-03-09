@@ -108,6 +108,14 @@
     </main>
 
     <script>
+	function showNotification(message, type = 'success') {
+    const container = document.getElementById('notification-container');
+    const notif = document.createElement('div');
+    notif.className = `notification ${type}`;
+    notif.textContent = message;
+    container.appendChild(notif);
+    setTimeout(() => notif.remove(), 3000);
+}
         (async function() {
             // Vérification utilisateur et MFA
             const { user, error } = await getCurrentUser();

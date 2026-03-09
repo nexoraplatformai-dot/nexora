@@ -948,5 +948,83 @@ h1, h2, h3, h4, h5, h6 {
   }
   .pricing-card {
     min-height: auto;
-  }
+  }/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: var(--amber);
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Notifications (toasts) */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  color: #000;
+  font-weight: 600;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  animation: slideIn 0.3s ease;
+}
+.notification.success {
+  background: var(--teal);
+}
+.notification.error {
+  background: #EF4444;
+  color: white;
+}
+.notification.info {
+  background: var(--amber);
+  color: #000;
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Surbrillance orange autour des cartes */
+.glass-card {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.glass-card:hover {
+  border-color: var(--amber);
+  box-shadow: 0 0 20px var(--amber-glow);
+}
+
+/* Animation de surbrillance tournante (optionnelle) */
+@keyframes borderGlow {
+  0% { border-color: var(--amber); box-shadow: 0 0 5px var(--amber-glow); }
+  50% { border-color: var(--amber-lt); box-shadow: 0 0 20px var(--amber-glow); }
+  100% { border-color: var(--amber); box-shadow: 0 0 5px var(--amber-glow); }
+}
+.glass-card.highlight {
+  animation: borderGlow 2s infinite;
+}
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s ease;
+}
+.notification.success { background: var(--teal); color: white; }
+.notification.error { background: #EF4444; color: white; }
+.notification.info { background: var(--amber); color: #000; }
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
 }

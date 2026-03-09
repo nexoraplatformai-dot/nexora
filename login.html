@@ -60,6 +60,14 @@
     </div>
 
 <script>
+function showNotification(message, type = 'success') {
+    const container = document.getElementById('notification-container');
+    const notif = document.createElement('div');
+    notif.className = `notification ${type}`;
+    notif.textContent = message;
+    container.appendChild(notif);
+    setTimeout(() => notif.remove(), 3000);
+}
     // Fonction d'initialisation exécutée après chargement complet
     function initLogin() {
         const loginForm = document.getElementById('login-form');
@@ -98,5 +106,6 @@
         initLogin(); // DOM déjà chargé
     }
 </script>
+<div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
 </body>
 </html>

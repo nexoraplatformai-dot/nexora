@@ -16,6 +16,14 @@
     <!-- Pas besoin de dashboard.js ici -->
 </head>
 <body style="background: var(--midnight); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem;">
+<nav style="background: transparent; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem;">
+    <a href="index.html" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+        <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
+        <span style="font-weight:800; color:var(--txt);">NEXORA</span>
+    </a>
+    <span style="flex:1;"></span>
+    <a href="index.html" style="color:var(--txt2); text-decoration: none;">Accueil</a>
+</nav>
     <div style="width:100%; max-width:440px;">
         <!-- Logo -->
         <a href="index.html" style="display:inline-block; margin-bottom:2rem;">
@@ -45,6 +53,14 @@
     </div>
 
     <script>
+	function showNotification(message, type = 'success') {
+    const container = document.getElementById('notification-container');
+    const notif = document.createElement('div');
+    notif.className = `notification ${type}`;
+    notif.textContent = message;
+    container.appendChild(notif);
+    setTimeout(() => notif.remove(), 3000);
+}
         // Récupérer l'email depuis l'URL (ex: ?email=test@test.com)
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get('email');
@@ -61,5 +77,6 @@
             // Idéalement, appeler une fonction Supabase pour renvoyer l'email
         });
     </script>
+	<div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
 </body>
 </html>
