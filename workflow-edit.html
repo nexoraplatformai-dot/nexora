@@ -44,7 +44,7 @@
                     <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de visites immobilières">
                 </div>
 
-                <!-- Connexion Google -->
+                <!-- Connexion Google avec indicateur d'état -->
                 <div class="form-group">
                     <label class="form-label">Agenda Google</label>
                     <div style="display:flex; align-items:center; gap:1rem;">
@@ -92,7 +92,7 @@
                     <p><strong>Variables disponibles :</strong> {prenom}, {nom}, {date}, {heure}, {lieu}</p>
                 </div>
 
-                <!-- Activer immédiatement (champ active) -->
+                <!-- Activer immédiatement -->
                 <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
                     <input type="checkbox" id="active" checked>
                     <label for="active">Activer le workflow immédiatement</label>
@@ -109,7 +109,7 @@
 
     <script>
         (async function() {
-            // Vérification utilisateur
+            // Vérification utilisateur et MFA
             const { user, error } = await getCurrentUser();
             if (error || !user) {
                 window.location.href = 'login.html';
@@ -121,21 +121,56 @@
                 return;
             }
 
-            // Récupérer l'ID du workflow si édition
-            const urlParams = new URLSearchParams(window.location.search);
-            const workflowId = urlParams.get('id');
+            // Vérifier l'état de connexion Google
+            async function checkGoogleConnection() {
+                try {
+                    const { data, error } = await window.supabaseClient
+                        .from('user_tokens')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('provider', 'google')
+                        .maybeSingle(); // retourne null si aucun résultat
 
-            // Vérifier connexion Google (simulée)
-document.getElementById('connect-google').addEventListener('click', async () => {
-  const { user } = await getCurrentUser();
-  if (!user) {
-    alert('Vous devez être connecté.');
-    return;
-  }
-  const state = btoa(JSON.stringify({ userId: user.id }));
-  // Rediriger vers l'API avec le state
-  window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
-});
+                    if (error) throw error;
+                    const statusEl = document.getElementById('google-status');
+                    if (data) {
+                        statusEl.innerHTML = '✅ Connecté';
+                        statusEl.style.color = 'var(--teal)';
+                    } else {
+                        statusEl.innerHTML = '❌ Non connecté';
+                        statusEl.style.color = 'var(--txt2)';
+                    }
+                } catch (err) {
+                    console.error('Erreur vérification Google:', err);
+                    document.getElementById('google-status').innerHTML = '❌ Erreur';
+                }
+            }
+            await checkGoogleConnection();
+
+            // Si retour de Google avec succès, on peut rafraîchir le statut
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('success') === 'google_connected') {
+                // On pourrait afficher un message temporaire
+                console.log('Connexion Google réussie !');
+                await checkGoogleConnection(); // re-vérifier immédiatement
+            }
+            if (urlParams.get('error') === 'invalid_grant') {
+                alert('Erreur lors de la connexion Google. Veuillez réessayer.');
+            }
+
+            // Bouton de connexion Google
+            document.getElementById('connect-google').addEventListener('click', async () => {
+                const { user } = await getCurrentUser();
+                if (!user) {
+                    alert('Vous devez être connecté.');
+                    return;
+                }
+                const state = btoa(JSON.stringify({ userId: user.id }));
+                window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
+            });
+
+            // Récupérer l'ID du workflow si édition
+            const workflowId = urlParams.get('id');
 
             // Si édition, charger les données (à implémenter)
             if (workflowId) {
@@ -154,7 +189,7 @@ document.getElementById('connect-google').addEventListener('click', async () => 
                 const messageJ1Sms = document.getElementById('message-j1-sms').value;
                 const messageJ1Email = document.getElementById('message-j1-email').value;
                 const messageH2Sms = document.getElementById('message-h2-sms').value;
-                const active = document.getElementById('active').checked; // ← champ actif
+                const active = document.getElementById('active').checked;
 
                 const config = {
                     keywords,
