@@ -8,11 +8,10 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Scripts dans l'ordre -->
+    <!-- Scripts essentiels -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/workflows.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh;">
     <!-- Navigation -->
@@ -41,7 +40,7 @@
             <div class="glass-card" style="padding:1.5rem; display:flex; justify-content:space-between; cursor:pointer;" onclick="window.location.href='workflows.html'">
                 <div>
                     <p style="color:var(--txt2); font-size:0.875rem;">Workflows actifs</p>
-                    <p id="workflows-count" class="stat-number" style="font-size:2rem; font-weight:800;">-</p>
+                    <p id="workflows-count" class="stat-number" style="font-size:2rem; font-weight:800;">0</p>
                 </div>
                 <div style="width:40px; height:40px; border-radius:8px; background:var(--amber-glow); display:flex; align-items:center; justify-content:center;">⚡</div>
             </div>
@@ -81,44 +80,68 @@
     </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('Dashboard chargé, vérification auth...');
+        (async function() {
+            // === Fonctions utilitaires intégrées ===
+            async function getWorkflowsDirect() {
+                try {
+                    const { data: { user } } = await window.supabaseClient.auth.getUser();
+                    if (!user) return { data: null, error: 'Non authentifié' };
+                    
+                    const { data, error } = await window.supabaseClient
+                        .from('workflows')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    return { data, error: null };
+                } catch (err) {
+                    return { data: null, error: err.message };
+                }
+            }
 
-            // Vérification utilisateur et MFA
+            async function executeWorkflowDirect(workflowId) {
+                try {
+                    const response = await fetch('/api/execute-workflow', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workflowId })
+                    });
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || `Erreur HTTP ${response.status}`);
+                        return { data, error: null };
+                    } else {
+                        const text = await response.text();
+                        throw new Error(`Réponse non JSON (code ${response.status}): ${text.substring(0,200)}`);
+                    }
+                } catch (err) {
+                    return { data: null, error: err.message };
+                }
+            }
+
+            // === Initialisation ===
             try {
+                // Vérification utilisateur
                 const { data: { user }, error } = await window.supabaseClient.auth.getUser();
                 if (error || !user) {
                     window.location.href = 'login.html';
                     return;
                 }
+                // Vérification MFA
                 const { data: factors } = await window.supabaseClient.auth.mfa.listFactors();
                 if (!factors.totp || factors.totp.length === 0) {
                     window.location.href = 'mfa-setup.html';
                     return;
                 }
-            } catch (err) {
-                console.error('Erreur initialisation dashboard:', err);
-            }
 
-            // Vérifier que getWorkflows est disponible
-            if (typeof getWorkflows !== 'function') {
-                console.error('getWorkflows n\'est pas défini ! Vérifiez que workflows.js est chargé.');
-                document.getElementById('recent-workflows').innerHTML = '<p style="color:var(--error);">Erreur : module workflows non chargé.</p>';
-                return;
-            }
+                // Récupérer les workflows
+                const { data: workflows, error: wfError } = await getWorkflowsDirect();
+                if (wfError) throw new Error(wfError);
 
-            // Récupérer les workflows
-            try {
-                const { data: workflows, error } = await getWorkflows();
-                if (error) throw error;
-
-                console.log('Workflows récupérés :', workflows);
-
-                // Mettre à jour le nombre de workflows actifs (si la colonne 'active' existe)
-                let activeCount = 0;
-                if (workflows && workflows.length > 0) {
-                    activeCount = workflows.filter(w => w.active).length;
-                }
+                // Mettre à jour le nombre de workflows actifs (si champ active existe)
+                const activeCount = workflows ? workflows.filter(w => w.active).length : 0;
                 document.getElementById('workflows-count').textContent = activeCount;
 
                 // Afficher les 3 derniers workflows
@@ -128,7 +151,6 @@
                     return;
                 }
 
-                // Prendre les 3 premiers (déjà triés par date décroissante dans getWorkflows)
                 const recent = workflows.slice(0, 3);
                 let html = '';
                 recent.forEach(w => {
@@ -139,19 +161,20 @@
                                 <span style="font-size:0.8rem; color:var(--amber);">${w.type}</span>
                             </div>
                             <div style="display:flex; gap:0.5rem;">
-                                <button class="btn btn-secondary btn-execute-recent" data-id="${w.id}" style="padding:0.2rem 0.6rem; font-size:0.8rem;">Exécuter</button>
-                                <button class="btn btn-secondary btn-edit-recent" data-id="${w.id}" style="padding:0.2rem 0.6rem; font-size:0.8rem;">Modifier</button>
+                                <button class="btn-execute-recent" data-id="${w.id}" style="background:transparent; border:1px solid var(--amber); color:var(--amber); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Exécuter</button>
+                                <button class="btn-edit-recent" data-id="${w.id}" style="background:transparent; border:1px solid var(--txt2); color:var(--txt2); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Modifier</button>
                             </div>
                         </div>
                     `;
                 });
                 recentContainer.innerHTML = html;
 
-                // Ajouter les écouteurs pour les boutons
+                // Écouteurs pour les boutons
                 document.querySelectorAll('.btn-execute-recent').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
                         const id = e.target.dataset.id;
-                        const result = await executeWorkflow(id);
+                        const result = await executeWorkflowDirect(id);
                         if (result.error) {
                             alert('Erreur : ' + result.error);
                         } else {
@@ -162,13 +185,14 @@
 
                 document.querySelectorAll('.btn-edit-recent').forEach(btn => {
                     btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         const id = e.target.dataset.id;
                         window.location.href = `workflow-edit.html?id=${id}`;
                     });
                 });
 
             } catch (err) {
-                console.error('Erreur chargement workflows:', err);
+                console.error('Erreur initialisation dashboard:', err);
                 document.getElementById('recent-workflows').innerHTML = '<p style="color:var(--error);">Erreur de chargement.</p>';
             }
 
@@ -177,7 +201,7 @@
                 await window.supabaseClient.auth.signOut();
                 window.location.href = 'index.html';
             });
-        });
+        })();
     </script>
 </body>
 </html>

@@ -1,20 +1,22 @@
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   console.log('=== execute-workflow called ===');
   console.log('Method:', req.method);
   console.log('Body:', req.body);
 
+  // Vérifier la méthode HTTP
   if (req.method !== 'POST') {
-    console.log('Method not allowed');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Vérifier les variables d'environnement
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('❌ Missing Supabase environment variables');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
+  // Initialiser le client Supabase
   const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -26,6 +28,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Récupérer le workflow
     const { data: workflow, error } = await supabase
       .from('workflows')
       .select('*')
@@ -40,9 +43,10 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Workflow non trouvé' });
     }
 
-    console.log('✅ Workflow found:', workflow.name);
+    // Simuler l'exécution (remplacer par votre logique réelle)
+    console.log('✅ Workflow exécuté:', workflow.name);
 
-    // Log d'exécution (optionnel)
+    // Enregistrer un log d'exécution (optionnel)
     try {
       await supabase.from('workflow_logs').insert({
         workflow_id: workflowId,
@@ -50,13 +54,19 @@ export default async function handler(req, res) {
         executed_at: new Date().toISOString()
       });
     } catch (logErr) {
-      console.warn('⚠️ Logging failed:', logErr.message);
+      console.warn('⚠️ Échec de l’insertion dans workflow_logs :', logErr.message);
     }
 
-    return res.status(200).json({ success: true, message: 'Workflow exécuté', name: workflow.name });
+    // Réponse JSON de succès
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Workflow exécuté avec succès',
+      workflowId: workflow.id,
+      name: workflow.name
+    });
 
   } catch (err) {
-    console.error('❌ Unhandled error:', err);
+    console.error('❌ Erreur non gérée:', err);
     return res.status(500).json({ error: 'Internal server error', details: err.message });
   }
-}
+};
