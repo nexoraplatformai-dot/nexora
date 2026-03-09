@@ -1,46 +1,48 @@
-// api/execute-workflow.js
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
+import { sendSMS, sendEmail } from '../lib/notifications'; // à créer
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).end();
+
+    const { createClient } = require('@supabase/supabase-js');
+
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+  const { workflowId } = req.body;
+  if (!workflowId) {
+    return res.status(400).json({ error: 'workflowId manquant' });
   }
 
   try {
-    const { workflowId } = req.body;
-
-    if (!workflowId) {
-      return res.status(400).json({ error: 'workflowId requis' });
-    }
-
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY // ou SERVICE_ROLE_KEY si admin ops
-    );
-
-    // Exemple minimal : récupère et "exécute"
-    const { data: workflow, error: fetchError } = await supabase
+    // Récupérer le workflow
+    const { data: workflow, error } = await supabase
       .from('workflows')
       .select('*')
       .eq('id', workflowId)
       .single();
 
-    if (fetchError) throw fetchError;
-    if (!workflow) {
-      return res.status(404).json({ error: 'Workflow introuvable' });
+    if (error || !workflow) {
+      return res.status(404).json({ error: 'Workflow non trouvé' });
     }
 
-    // ← Ici votre vraie logique d'exécution (actions, triggers, emails, etc.)
-    console.log(`Exécution workflow: ${workflow.name} (ID: ${workflowId})`);
+    // Exemple : envoyer une notification (à adapter selon votre logique)
+    console.log('Exécution du workflow :', workflow.name);
 
-    return res.status(200).json({
-      success: true,
-      message: 'Workflow exécuté avec succès'
-    });
+    // Log d'exécution
+    await supabase.from('workflow_logs').insert([{
+      workflow_id: workflowId,
+      status: 'success',
+      executed_at: new Date().toISOString()
+    }]);
+
+    res.status(200).json({ success: true, message: 'Workflow exécuté' });
   } catch (err) {
-    console.error('Erreur dans execute-workflow:', err);
-    return res.status(500).json({
-      error: err.message || 'Erreur serveur interne'
-    });
+    console.error('Erreur:', err);
+    res.status(500).json({ error: err.message });
   }
 };
