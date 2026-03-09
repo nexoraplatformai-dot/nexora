@@ -197,6 +197,8 @@
                 const messageJ1Email = document.getElementById('message-j1-email').value;
                 const messageH2Sms = document.getElementById('message-h2-sms').value;
                 const active = document.getElementById('active').checked;
+// puis dans l'objet envoyé à createWorkflow ou updateWorkflow :
+{ user_id: user.id, name, type, config, active }
 
                 const config = {
                     keywords,
