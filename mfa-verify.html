@@ -47,11 +47,18 @@
     </div>
 
     <script>
+    // Attendre que le DOM soit prêt
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Vérifier que supabaseClient existe
+        if (typeof supabaseClient === 'undefined') {
+            alert('Erreur d\'initialisation. Veuillez rafraîchir la page.');
+            return;
+        }
 
         let factors = [];
 
         async function getFactors() {
-            const { data, error } = await supabase.auth.mfa.listFactors();
+            const { data, error } = await supabaseClient.auth.mfa.listFactors();
             if (error) {
                 alert('Erreur : ' + error.message);
                 return;
@@ -62,7 +69,8 @@
                 window.location.href = 'mfa-setup.html';
             }
         }
-        getFactors();
+
+        await getFactors();
 
         document.getElementById('verify-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -72,10 +80,10 @@
             const factorId = factors[0].id;
 
             try {
-                const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+                const { data: challengeData, error: challengeError } = await supabaseClient.auth.mfa.challenge({ factorId });
                 if (challengeError) throw challengeError;
 
-                const { error: verifyError } = await supabase.auth.mfa.verify({
+                const { error: verifyError } = await supabaseClient.auth.mfa.verify({
                     factorId,
                     challengeId: challengeData.id,
                     code
@@ -87,6 +95,7 @@
                 alert('Code invalide : ' + err.message);
             }
         });
-    </script>
+    });
+</script>
 </body>
 </html>
