@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Scripts essentiels -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
@@ -60,7 +59,7 @@
             </div>
         </div>
 
-        <!-- Nouveau workflow (lien direct) -->
+        <!-- Nouveau workflow -->
         <div class="glass-card" style="padding:2rem; margin-bottom:2rem;">
             <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">Créer votre premier workflow</h2>
             <p style="color:var(--txt2); margin-bottom:1.5rem;">Automatisez les rappels de rendez-vous en quelques clics.</p>
@@ -81,13 +80,12 @@
 
     <script>
         (async function() {
-            // === Fonctions utilitaires intégrées ===
+            // Fonctions utilitaires
             async function getWorkflowsDirect() {
                 try {
                     const { data: { user } } = await window.supabaseClient.auth.getUser();
                     if (!user) return { data: null, error: 'Non authentifié' };
                     
-                    // Récupérer les workflows
                     const { data: workflows, error } = await window.supabaseClient
                         .from('workflows')
                         .select('*')
@@ -96,7 +94,6 @@
                     
                     if (error) throw error;
 
-                    // Pour chaque workflow, récupérer le dernier log d'exécution
                     const workflowsWithLogs = await Promise.all(workflows.map(async (w) => {
                         const { data: logs, error: logError } = await window.supabaseClient
                             .from('workflow_logs')
@@ -137,30 +134,19 @@
                 }
             }
 
-            // === Initialisation ===
+            // Initialisation
             try {
-                // Vérification utilisateur
                 const { data: { user }, error } = await window.supabaseClient.auth.getUser();
-                if (error || !user) {
-                    window.location.href = 'login.html';
-                    return;
-                }
-                // Vérification MFA
+                if (error || !user) { window.location.href = 'login.html'; return; }
                 const { data: factors } = await window.supabaseClient.auth.mfa.listFactors();
-                if (!factors.totp || factors.totp.length === 0) {
-                    window.location.href = 'mfa-setup.html';
-                    return;
-                }
+                if (!factors.totp || factors.totp.length === 0) { window.location.href = 'mfa-setup.html'; return; }
 
-                // Récupérer les workflows avec logs
                 const { data: workflows, error: wfError } = await getWorkflowsDirect();
                 if (wfError) throw new Error(wfError);
 
-                // Mettre à jour le nombre de workflows actifs (si champ active existe)
                 const activeCount = workflows ? workflows.filter(w => w.active).length : 0;
                 document.getElementById('workflows-count').textContent = activeCount;
 
-                // Afficher les 3 derniers workflows
                 const recentContainer = document.getElementById('recent-workflows');
                 if (!workflows || workflows.length === 0) {
                     recentContainer.innerHTML = '<p style="color:var(--txt2);">Aucun workflow pour le moment.</p>';
@@ -181,7 +167,7 @@
                                 <span style="font-size:0.8rem; color:var(--amber);">${w.type}</span>
                             </div>
                             <div style="display:flex; gap:0.5rem;">
-                                <button class="btn-execute-recent" data-id="${w.id}" style="background:transparent; border:1px solid var(--amber); color:var(--amber); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Exécuter</button>
+                                <button class="btn-execute-recent" data-id="${w.id}" data-executed="${!!lastExecuted}" style="background:transparent; border:1px solid var(--amber); color:var(--amber); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Exécuter</button>
                                 <button class="btn-edit-recent" data-id="${w.id}" style="background:transparent; border:1px solid var(--txt2); color:var(--txt2); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Modifier</button>
                             </div>
                         </div>
@@ -189,19 +175,37 @@
                 });
                 recentContainer.innerHTML = html;
 
-                // Écouteurs pour les boutons
+                // Écouteurs avec gestion des doubles clics
                 document.querySelectorAll('.btn-execute-recent').forEach(btn => {
+                    let executing = false;
                     btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
+                        if (executing) return; // Empêche les doubles clics
                         const id = e.target.dataset.id;
+                        const alreadyExecuted = e.target.dataset.executed === 'true';
+                        
+                        // Option : message si déjà exécuté
+                        if (alreadyExecuted) {
+                            if (!confirm('Ce workflow a déjà été exécuté. Voulez-vous vraiment l\'exécuter à nouveau ?')) {
+                                return;
+                            }
+                        }
+
+                        executing = true;
+                        const originalText = btn.textContent;
+                        btn.textContent = '⏳';
+                        btn.disabled = true;
+
                         const result = await executeWorkflowDirect(id);
                         if (result.error) {
                             alert('Erreur : ' + result.error);
                         } else {
                             alert('Workflow exécuté avec succès !');
-                            // Optionnel : recharger la page pour mettre à jour la coche
-                            location.reload();
+                            location.reload(); // Recharge pour mettre à jour la coche
                         }
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        executing = false;
                     });
                 });
 
@@ -218,7 +222,6 @@
                 document.getElementById('recent-workflows').innerHTML = '<p style="color:var(--error);">Erreur de chargement.</p>';
             }
 
-            // Déconnexion
             document.getElementById('logout').addEventListener('click', async () => {
                 await window.supabaseClient.auth.signOut();
                 window.location.href = 'index.html';
