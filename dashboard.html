@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Ordre strict -->
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
@@ -75,7 +75,6 @@
                     <span style="width:30px; height:30px; border-radius:50%; background:var(--amber-glow); display:flex; align-items:center; justify-content:center;">📅</span>
                     <div><span style="font-weight:600;">Rappel de rendez-vous</span><br><span style="font-size:12px; color:var(--txt2);">Il y a 2 heures</span></div>
                 </div>
-                <!-- Plus d'activités (exemple) -->
             </div>
         </div>
     </main>
@@ -95,33 +94,21 @@
                         window.location.href = 'mfa-setup.html';
                         return;
                     }
-                    // Si une fonction loadStats existe (optionnel)
-                    if (typeof window.loadStats === 'function') {
-                        window.loadStats();
-                    }
                 } catch (err) {
                     console.error('Erreur initialisation dashboard:', err);
                 }
             })();
 
             // Déconnexion
-            const logoutBtn = document.getElementById('logout');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', async () => {
-                    await window.supabaseClient.auth.signOut();
-                    window.location.href = 'index.html';
-                });
-            }
+            document.getElementById('logout')?.addEventListener('click', async () => {
+                await window.supabaseClient.auth.signOut();
+                window.location.href = 'index.html';
+            });
 
-            // Bouton Nouveau workflow
-            const newWorkflowBtn = document.getElementById('new-workflow-btn');
-            if (newWorkflowBtn) {
-                newWorkflowBtn.addEventListener('click', () => {
-                    window.location.href = 'workflow-edit.html';
-                });
-            } else {
-                console.error('Bouton #new-workflow-btn introuvable');
-            }
+            // Nouveau workflow
+            document.getElementById('new-workflow-btn')?.addEventListener('click', () => {
+                window.location.href = 'workflow-edit.html';
+            });
         });
     </script>
 </body>
