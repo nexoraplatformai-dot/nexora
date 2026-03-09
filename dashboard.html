@@ -87,14 +87,30 @@
                     const { data: { user } } = await window.supabaseClient.auth.getUser();
                     if (!user) return { data: null, error: 'Non authentifié' };
                     
-                    const { data, error } = await window.supabaseClient
+                    // Récupérer les workflows
+                    const { data: workflows, error } = await window.supabaseClient
                         .from('workflows')
                         .select('*')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false });
                     
                     if (error) throw error;
-                    return { data, error: null };
+
+                    // Pour chaque workflow, récupérer le dernier log d'exécution
+                    const workflowsWithLogs = await Promise.all(workflows.map(async (w) => {
+                        const { data: logs, error: logError } = await window.supabaseClient
+                            .from('workflow_logs')
+                            .select('executed_at')
+                            .eq('workflow_id', w.id)
+                            .eq('status', 'success')
+                            .order('executed_at', { ascending: false })
+                            .limit(1);
+                        if (logError) throw logError;
+                        const lastExecuted = logs && logs.length > 0 ? logs[0].executed_at : null;
+                        return { ...w, last_executed: lastExecuted };
+                    }));
+                    
+                    return { data: workflowsWithLogs, error: null };
                 } catch (err) {
                     return { data: null, error: err.message };
                 }
@@ -136,7 +152,7 @@
                     return;
                 }
 
-                // Récupérer les workflows
+                // Récupérer les workflows avec logs
                 const { data: workflows, error: wfError } = await getWorkflowsDirect();
                 if (wfError) throw new Error(wfError);
 
@@ -154,10 +170,14 @@
                 const recent = workflows.slice(0, 3);
                 let html = '';
                 recent.forEach(w => {
+                    const lastExecuted = w.last_executed ? new Date(w.last_executed).toLocaleString() : null;
                     html += `
                         <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); padding:0.8rem 0;">
                             <div>
-                                <strong style="color:var(--txt);">${w.name}</strong><br>
+                                <strong style="color:var(--txt);">
+                                    ${w.name}
+                                    ${lastExecuted ? '<span style="color:var(--teal); margin-left:0.5rem;" title="Dernière exécution : ' + lastExecuted + '">✅</span>' : ''}
+                                </strong><br>
                                 <span style="font-size:0.8rem; color:var(--amber);">${w.type}</span>
                             </div>
                             <div style="display:flex; gap:0.5rem;">
@@ -179,6 +199,8 @@
                             alert('Erreur : ' + result.error);
                         } else {
                             alert('Workflow exécuté avec succès !');
+                            // Optionnel : recharger la page pour mettre à jour la coche
+                            location.reload();
                         }
                     });
                 });
