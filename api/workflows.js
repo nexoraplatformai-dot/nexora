@@ -1,28 +1,28 @@
+// api/workflows.js (POST)
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-    const { user, error } = await supabase.auth.getUser(req.headers.authorization);
-    if (error || !user) return res.status(401).json({ error: 'Non authentifié' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-    if (req.method === 'GET') {
-        const { data, error } = await supabase
-            .from('workflows')
-            .select('*')
-            .eq('user_id', user.id);
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-    }
+  // Vérifier l'authentification via le token (à adapter selon votre méthode)
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  const { user } = await supabase.auth.getUser(req.headers.authorization?.split(' ')[1]);
+  if (!user) return res.status(401).json({ error: 'Non authentifié' });
 
-    if (req.method === 'POST') {
-        const workflow = { ...req.body, user_id: user.id };
-        const { data, error } = await supabase
-            .from('workflows')
-            .insert([workflow])
-            .select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(201).json(data[0]);
-    }
+  const { name, type, config, active = true } = req.body;
 
-    res.status(405).end();
+  try {
+    const { data, error } = await supabase
+      .from('workflows')
+      .insert([{ user_id: user.id, name, type, config, active }])
+      .select();
+
+    if (error) throw error;
+    res.status(201).json(data[0]);
+  } catch (err) {
+    console.error('Erreur création workflow:', err);
+    res.status(500).json({ error: err.message });
+  }
 }
