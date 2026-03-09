@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXORA – Vérification 2FA</title>
+    <title>NEXORA – Inscription</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/responsive.css">
-	   <link rel="stylesheet" href="css/responsive.css">
-	<link rel="stylesheet" href="css/dashboard.css">  <!-- Ajout -->
-<script src="js/config.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/dashboard.js"></script>
+    <!-- Pas besoin de dashboard.css sur la page d'inscription -->
+    
+    <!-- Ordre des scripts : d'abord Supabase, puis config, puis auth -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <!-- Pas besoin de dashboard.js ici -->
 </head>
 <body style="background: var(--midnight); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem;">
     <div style="width:100%; max-width:440px;">

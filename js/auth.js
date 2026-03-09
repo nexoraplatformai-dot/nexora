@@ -1,9 +1,6 @@
-const SUPABASE_URL = 'https://sqzovftrdjcjpahpifnx.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_Pvcew-turPW9IoFTJajAwA_YbAlWc11';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 // Fonctions d'authentification complètes avec MFA
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
