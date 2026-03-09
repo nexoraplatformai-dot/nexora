@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA – Configuration 2FA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
+        <h1 class="text-2xl font-bold text-center text-blue-600 mb-6">Sécurisez votre compte</h1>
+        <p class="text-gray-600 mb-4">Scannez ce QR code avec Google Authenticator ou une application compatible, puis entrez le code à 6 chiffres.</p>
+        
+        <div id="qrcode-container" class="flex justify-center mb-4">
+            <div id="qrcode" class="border p-2 rounded"></div>
+        </div>
+
+        <form id="mfa-form">
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2" for="code">Code à 6 chiffres</label>
+                <input type="text" id="code" maxlength="6" pattern="\d{6}" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Activer la 2FA</button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script>
+        const SUPABASE_URL = 'https://sqzovftrdjcjpahpifnx.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_Pvcew-turPW9IoFTJajAwA_YbAlWc11';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let factorId = null;
+
+        async function setupMFA() {
+            const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+            if (userError || !user) {
+                alert('Vous devez être connecté.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const { data, error } = await supabaseClient.auth.mfa.enroll({ factorType: 'totp' });
+            if (error) {
+                alert('Erreur lors de la création MFA : ' + error.message);
+                return;
+            }
+
+            factorId = data.id;
+            const qr = qrcode(0, 'M');
+            qr.addData(data.totp.uri);
+            qr.make();
+            document.getElementById('qrcode').innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
+        }
+
+        setupMFA();
+
+        document.getElementById('mfa-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('code').value;
+
+            if (!factorId) return;
+
+            try {
+                const { error } = await supabaseClient.auth.mfa.challengeAndVerify({ factorId, code });
+                if (error) throw error;
+
+                alert('MFA activée avec succès !');
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                alert('Code invalide : ' + err.message);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA – Vérification 2FA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
+        <h1 class="text-2xl font-bold text-center text-blue-600 mb-6">Authentification à deux facteurs</h1>
+        <p class="text-gray-600 mb-4">Entrez le code à 6 chiffres généré par votre application.</p>
+        
+        <form id="verify-form">
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2" for="code">Code</label>
+                <input type="text" id="code" maxlength="6" pattern="\d{6}" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">Vérifier</button>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://sqzovftrdjcjpahpifnx.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_Pvcew-turPW9IoFTJajAwA_YbAlWc11';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let factors = [];
+
+        async function getFactors() {
+            const { data, error } = await supabaseClient.auth.mfa.listFactors();
+            if (error) {
+                alert('Erreur : ' + error.message);
+                return;
+            }
+            factors = data.totp;
+            if (factors.length === 0) {
+                alert('Aucun facteur MFA trouvé. Redirection vers configuration.');
+                window.location.href = 'mfa-setup.html';
+            }
+        }
+        getFactors();
+
+        document.getElementById('verify-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('code').value;
+
+            if (factors.length === 0) return;
+            const factorId = factors[0].id;
+
+            try {
+                const { data: challengeData, error: challengeError } = await supabaseClient.auth.mfa.challenge({ factorId });
+                if (challengeError) throw challengeError;
+
+                const { error: verifyError } = await supabaseClient.auth.mfa.verify({
+                    factorId,
+                    challengeId: challengeData.id,
+                    code
+                });
+                if (verifyError) throw verifyError;
+
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                alert('Code invalide : ' + err.message);
+            }
+        });
+    </script>
+</body>
+</html>
