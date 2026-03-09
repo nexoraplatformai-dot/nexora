@@ -1,6 +1,7 @@
-import { google } from 'googleapis';
-import { createClient } from '@supabase/supabase-js';
+const { google } = require('googleapis');
+const { createClient } = require('@supabase/supabase-js');
 
+// Vérification des variables d'environnement
 const requiredEnv = [
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
@@ -21,7 +22,7 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     // Étape 1: Générer l'URL d'autorisation (pas de code)
     if (req.method === 'GET' && !req.query.code) {
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
       const url = oauth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: ['https://www.googleapis.com/auth/calendar.readonly'],
-        state: state, // Repasser le state reçu
+        state: state,
         prompt: 'consent'
       });
       return res.redirect(url);
@@ -83,10 +84,9 @@ export default async function handler(req, res) {
     res.status(405).send('Method not allowed');
   } catch (err) {
     console.error('OAuth error:', err);
-    // Gérer l'erreur invalid_grant
     if (err.message.includes('invalid_grant')) {
       return res.redirect('/workflow-edit.html?error=invalid_grant');
     }
     res.status(500).send('OAuth failed: ' + err.message);
   }
-}
+};
