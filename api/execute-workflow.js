@@ -1,4 +1,3 @@
-// api/execute-workflow.js (ES module)
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
@@ -23,7 +22,9 @@ export default async function handler(req, res) {
   );
 
   const { workflowId } = req.body;
-  if (!workflowId) return res.status(400).json({ error: 'workflowId manquant' });
+  if (!workflowId) {
+    return res.status(400).json({ error: 'workflowId manquant' });
+  }
 
   try {
     const { data: workflow, error } = await supabase
@@ -36,7 +37,9 @@ export default async function handler(req, res) {
       console.error('❌ Supabase error:', error);
       return res.status(500).json({ error: 'Database error', details: error.message });
     }
-    if (!workflow) return res.status(404).json({ error: 'Workflow non trouvé' });
+    if (!workflow) {
+      return res.status(404).json({ error: 'Workflow non trouvé' });
+    }
 
     console.log('✅ Workflow trouvé:', workflow.name);
 
@@ -51,7 +54,7 @@ export default async function handler(req, res) {
       console.warn('⚠️ Logging failed:', logErr.message);
     }
 
-    return res.status(200).json({ success: true, message: 'Workflow exécuté' });
+    return res.status(200).json({ success: true, message: 'Workflow exécuté avec succès' });
   } catch (err) {
     console.error('❌ Erreur:', err);
     return res.status(500).json({ error: err.message });
