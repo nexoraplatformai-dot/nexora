@@ -82,26 +82,28 @@
         </div>
     </main>
 
-    <script>
+<script>
+    // supabaseClient vient de auth.js, pas besoin de le recréer
 
-        // Vérifier que l'utilisateur est authentifié et a MFA
-        supabase.auth.getUser().then(async ({ data: { user }, error }) => {
-            if (error || !user) {
-                window.location.href = 'login.html';
-                return;
-            }
+    // Vérifier que l'utilisateur est authentifié et a MFA
+    supabaseClient.auth.getUser().then(async ({ data: { user }, error }) => {
+        if (error || !user) {
+            window.location.href = 'login.html';
+            return;
+        }
+        const { data: factors } = await supabaseClient.auth.mfa.listFactors();
+        if (!factors.totp || factors.totp.length === 0) {
+            window.location.href = 'mfa-setup.html';
+        }
+    });
 
-            // Vérifier MFA
-            const { data: factors } = await supabase.auth.mfa.listFactors();
-            if (!factors.totp || factors.totp.length === 0) {
-                window.location.href = 'mfa-setup.html';
-            }
-        });
+    document.getElementById('logout').addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = 'index.html';
+    });
 
-        document.getElementById('logout').addEventListener('click', async () => {
-            await supabase.auth.signOut();
-            window.location.href = 'index.html';
-        });
-    </script>
+    // Charger les statistiques (si besoin)
+    if (typeof loadStats === 'function') loadStats();
+</script>
 </body>
 </html>
