@@ -1,0 +1,11 @@
+{
+  "name": "nexora",
+  "version": "1.0.0",
+  "description": "Application d'automatisation professionnelle",
+  "dependencies": {
+    "@sendgrid/mail": "^7.7.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "googleapis": "^126.0.1",
+    "twilio": "^4.19.0"
+  }
+}
