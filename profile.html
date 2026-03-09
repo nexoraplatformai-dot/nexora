@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA – Mon profil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+	   <link rel="stylesheet" href="css/responsive.css">
+	<link rel="stylesheet" href="css/dashboard.css">  <!-- Ajout -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+</head>
+<body style="background: var(--midnight); min-height:100vh;">
+    <!-- Navigation (identique au dashboard) -->
+    <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
+        <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
+            <a href="dashboard.html" style="display:flex; align-items:center; gap:8px;">
+                <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
+                <span style="font-weight:800;">NEXORA</span>
+            </a>
+            <button id="logout" class="btn btn-secondary" style="padding:6px 12px;">Déconnexion</button>
+        </div>
+    </nav>
+
+    <main style="max-width:800px; margin:2rem auto; padding:0 2rem;">
+        <h1 style="font-size:2rem; font-weight:800; margin-bottom:2rem;">Mon profil</h1>
+
+        <div style="display:grid; gap:2rem;">
+            <!-- Informations personnelles -->
+            <div class="glass-card" style="padding:2rem;">
+                <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1.5rem;">Informations générales</h2>
+                <div id="user-info">
+                    <p>Chargement...</p>
+                </div>
+            </div>
+
+            <!-- Configuration MFA -->
+            <div class="glass-card" style="padding:2rem;">
+                <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1.5rem;">Sécurité à deux facteurs (2FA)</h2>
+                <div id="mfa-status">
+                    <p>Vérification...</p>
+                </div>
+                <div id="mfa-setup" style="display:none; margin-top:1.5rem;">
+                    <p style="color:var(--txt2); margin-bottom:1rem;">Scannez ce QR code avec Google Authenticator :</p>
+                    <div style="display:flex; justify-content:center; margin-bottom:1rem;">
+                        <div id="qrcode" style="background:white; padding:0.5rem; border-radius:12px;"></div>
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <input type="text" id="mfa-code" placeholder="Code à 6 chiffres" class="form-input" style="text-align:center;">
+                    </div>
+                    <button id="verify-mfa" class="btn btn-primary">Activer la 2FA</button>
+                </div>
+            </div>
+
+            <!-- RGPD -->
+            <div class="glass-card" style="padding:2rem;">
+                <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">Gestion des données</h2>
+                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                    <button class="btn btn-secondary">📥 Exporter mes données</button>
+                    <button class="btn btn-secondary" style="border-color:#EF4444; color:#EF4444;">🗑️ Supprimer mon compte</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const SUPABASE_URL = 'https://sqzovftrdjcjpahpifnx.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_Pvcew-turPW9IoFTJajAwA_YbAlWc11';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let factorId = null;
+
+        async function loadUser() {
+            const { data: { user }, error } = await supabase.auth.getUser();
+            if (error || !user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('user-info').innerHTML = `
+                <p><strong>Email :</strong> ${user.email}</p>
+                <p><strong>ID :</strong> ${user.id}</p>
+                <p><strong>Dernière connexion :</strong> ${new Date(user.last_sign_in_at).toLocaleString()}</p>
+            `;
+
+            // Vérifier MFA
+            const { data: factors } = await supabase.auth.mfa.listFactors();
+            const hasMfa = factors.totp && factors.totp.length > 0;
+
+            if (hasMfa) {
+                document.getElementById('mfa-status').innerHTML = `
+                    <p style="color:#10B981;">✅ 2FA activée</p>
+                    <button id="disable-mfa" class="btn btn-secondary" style="margin-top:1rem;">Désactiver la 2FA</button>
+                `;
+                document.getElementById('disable-mfa')?.addEventListener('click', async () => {
+                    // Logique désactivation
+                    alert('Fonctionnalité à implémenter');
+                });
+            } else {
+                document.getElementById('mfa-status').innerHTML = `
+                    <p style="color:#F59E0B;">⚠️ 2FA non configurée</p>
+                    <button id="start-mfa" class="btn btn-primary" style="margin-top:1rem;">Configurer la 2FA</button>
+                `;
+                document.getElementById('start-mfa')?.addEventListener('click', setupMFA);
+            }
+        }
+
+        async function setupMFA() {
+            document.getElementById('mfa-setup').style.display = 'block';
+            
+            try {
+                const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+                if (error) throw error;
+
+                factorId = data.id;
+                const uri = data.totp.uri;
+
+                const qr = qrcode(0, 'M');
+                qr.addData(uri);
+                qr.make();
+                document.getElementById('qrcode').innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
+            } catch (err) {
+                alert('Erreur : ' + err.message);
+            }
+        }
+
+        document.getElementById('verify-mfa')?.addEventListener('click', async () => {
+            const code = document.getElementById('mfa-code').value;
+            if (!factorId || !code) return;
+
+            try {
+                const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
+                if (error) throw error;
+
+                alert('2FA activée avec succès !');
+                location.reload();
+            } catch (err) {
+                alert('Code invalide : ' + err.message);
+            }
+        });
+
+        document.getElementById('logout').addEventListener('click', async () => {
+            await supabase.auth.signOut();
+            window.location.href = 'index.html';
+        });
+
+        loadUser();
+    </script>
+</body>
+</html>

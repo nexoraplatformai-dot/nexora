@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA – Vérification email</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body style="background: var(--midnight); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem;">
+    <div style="width:100%; max-width:440px;">
+        <!-- Logo -->
+        <a href="index.html" style="display:inline-block; margin-bottom:2rem;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center; font-size:16px;">⚡</div>
+                <span style="font-size:20px; font-weight:800; letter-spacing:-0.045em; color:var(--txt);">NEXORA</span>
+            </div>
+        </a>
+
+        <!-- Card -->
+        <div class="glass-card" style="padding:2rem; text-align:center;">
+            <div style="font-size:48px; margin-bottom:1rem;">📧</div>
+            <h1 style="font-size:24px; font-weight:800; margin-bottom:1rem;">Vérifiez votre email</h1>
+            <p style="color:var(--txt2); font-size:14px; line-height:1.7; margin-bottom:1.5rem;">
+                Un email de confirmation a été envoyé à <strong id="email-display" style="color:var(--amber);"></strong>.
+                <br><br>
+                Cliquez sur le lien dans l'email pour activer votre compte, puis revenez vous connecter.
+            </p>
+            <a href="login.html" class="btn btn-primary" style="margin-bottom:0.5rem;">Aller à la connexion</a>
+            <p style="font-size:12px; color:var(--txt2); margin-top:1rem;">
+                Vous n'avez pas reçu l'email ? 
+                <a href="#" id="resend-link" style="color:var(--amber);">Renvoyer</a>
+            </p>
+        </div>
+
+        <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
+    </div>
+
+    <script>
+        // Récupérer l'email depuis l'URL (ex: ?email=test@test.com)
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        if (email) {
+            document.getElementById('email-display').textContent = email;
+        } else {
+            document.getElementById('email-display').textContent = 'votre adresse';
+        }
+
+        // Simulation renvoi d'email (à connecter avec Supabase si besoin)
+        document.getElementById('resend-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            alert('Fonctionnalité de renvoi à implémenter avec Supabase (gérer les rate limits).');
+            // Idéalement, appeler une fonction Supabase pour renvoyer l'email
+        });
+    </script>
+</body>
+</html>

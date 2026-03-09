@@ -4,54 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXORA – Tableau de bord</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+   <link rel="stylesheet" href="css/responsive.css">
+	<link rel="stylesheet" href="css/dashboard.css">  <!-- Ajout -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50">
-    <nav class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-blue-600">NEXORA</h1>
-            <button id="logout" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Déconnexion</button>
+<body style="background: var(--midnight); min-height:100vh;">
+    <!-- Navigation dashboard -->
+    <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
+        <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
+                    <span style="font-weight:800;">NEXORA</span>
+                </div>
+                <span class="pill" style="background:var(--amber-glow); color:var(--amber); font-size:10px;">Bêta</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
+                <button id="logout" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Déconnexion</button>
+            </div>
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 class="text-2xl font-bold mb-6">Bienvenue sur votre tableau de bord</h2>
-        <p class="text-gray-600">Cette zone est protégée et accessible uniquement après authentification complète (MFA validée).</p>
-        
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-lg font-semibold mb-2">📊 Statistiques</h3>
-                <p class="text-3xl font-bold text-blue-600">0</p>
-                <p class="text-gray-500">workflows actifs</p>
+    <main style="max-width:1280px; margin:2rem auto; padding:0 2rem;">
+        <h1 style="font-size:2rem; font-weight:800; margin-bottom:0.5rem;">Bonjour !</h1>
+        <p style="color:var(--txt2); margin-bottom:2rem;">Voici un aperçu de votre activité.</p>
+
+        <!-- Stats cards -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:2rem;">
+            <div class="glass-card" style="padding:1.5rem; display:flex; justify-content:space-between;">
+                <div>
+                    <p style="color:var(--txt2); font-size:0.875rem;">Workflows actifs</p>
+                    <p style="font-size:2rem; font-weight:800;">3</p>
+                </div>
+                <div style="width:40px; height:40px; border-radius:8px; background:var(--amber-glow); display:flex; align-items:center; justify-content:center;">⚡</div>
             </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm">
-                <h3 class="text-lg font-semibold mb-2">⏱️ Temps économisé</h3>
-                <p class="text-3xl font-bold text-blue-600">0h</p>
-                <p class="text-gray-500">cette semaine</p>
+            <div class="glass-card" style="padding:1.5rem; display:flex; justify-content:space-between;">
+                <div>
+                    <p style="color:var(--txt2); font-size:0.875rem;">Temps économisé</p>
+                    <p style="font-size:2rem; font-weight:800;">12h</p>
+                </div>
+                <div style="width:40px; height:40px; border-radius:8px; background:var(--teal-glow); display:flex; align-items:center; justify-content:center;">⏱️</div>
+            </div>
+            <div class="glass-card" style="padding:1.5rem; display:flex; justify-content:space-between;">
+                <div>
+                    <p style="color:var(--txt2); font-size:0.875rem;">Rappels envoyés</p>
+                    <p style="font-size:2rem; font-weight:800;">247</p>
+                </div>
+                <div style="width:40px; height:40px; border-radius:8px; background:rgba(139,92,246,0.2); display:flex; align-items:center; justify-content:center;">📨</div>
             </div>
         </div>
 
-        <div class="mt-8 bg-white p-6 rounded-xl shadow-sm">
-            <h3 class="text-lg font-semibold mb-4">Commencer par créer votre premier workflow</h3>
-            <a href="#" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Créer un workflow</a>
+        <!-- Quick actions -->
+        <div class="glass-card" style="padding:2rem; margin-bottom:2rem;">
+            <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">Créer votre premier workflow</h2>
+            <p style="color:var(--txt2); margin-bottom:1.5rem;">Automatisez les rappels de rendez-vous en quelques clics.</p>
+            <button class="btn btn-primary">➕ Nouveau workflow</button>
+        </div>
+
+        <!-- Recent activity -->
+        <div class="glass-card" style="padding:2rem;">
+            <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">Activité récente</h2>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                <div style="display:flex; align-items:center; gap:1rem; padding:0.5rem 0; border-bottom:1px solid var(--border);">
+                    <span style="width:30px; height:30px; border-radius:50%; background:var(--amber-glow); display:flex; align-items:center; justify-content:center;">📅</span>
+                    <div><span style="font-weight:600;">Rappel de rendez-vous</span><br><span style="font-size:12px; color:var(--txt2);">Il y a 2 heures</span></div>
+                </div>
+                <!-- ... plus d'activités ... -->
+            </div>
         </div>
     </main>
 
     <script>
         const SUPABASE_URL = 'https://sqzovftrdjcjpahpifnx.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_Pvcew-turPW9IoFTJajAwA_YbAlWc11';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Vérifier que l'utilisateur est authentifié
-        supabaseClient.auth.getUser().then(({ data: { user }, error }) => {
+        // Vérifier que l'utilisateur est authentifié et a MFA
+        supabase.auth.getUser().then(async ({ data: { user }, error }) => {
             if (error || !user) {
                 window.location.href = 'login.html';
+                return;
+            }
+
+            // Vérifier MFA
+            const { data: factors } = await supabase.auth.mfa.listFactors();
+            if (!factors.totp || factors.totp.length === 0) {
+                window.location.href = 'mfa-setup.html';
             }
         });
 
         document.getElementById('logout').addEventListener('click', async () => {
-            await supabaseClient.auth.signOut();
+            await supabase.auth.signOut();
             window.location.href = 'index.html';
         });
     </script>

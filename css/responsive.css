@@ -1,0 +1,66 @@
+/* ===== RESPONSIVE ===== */
+
+/* Large devices (desktops, less than 1200px) */
+@media (max-width: 1199.98px) {
+    .container {
+        max-width: 960px;
+    }
+}
+
+/* Medium devices (tablets, less than 992px) */
+@media (max-width: 991.98px) {
+    .container {
+        max-width: 720px;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .stats-item {
+        border-right: none;
+    }
+    .footer-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .mini-dash-cols {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Small devices (landscape phones, less than 768px) */
+@media (max-width: 767.98px) {
+    .container {
+        max-width: 540px;
+        padding: 0 1rem;
+    }
+    .nav-links {
+        display: none;
+    }
+    .hero-ctas {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .hero-ctas .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Extra small devices (portrait phones, less than 576px) */
+@media (max-width: 575.98px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .glass-card {
+        padding: 1.5rem;
+    }
+}

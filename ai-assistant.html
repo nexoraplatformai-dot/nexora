@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXORA – Assistant IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body style="background: var(--midnight); min-height:100vh;">
+    <!-- Navigation dashboard -->
+    <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
+        <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <a href="dashboard.html" style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
+                    <span style="font-weight:800;">NEXORA</span>
+                </a>
+                <span class="pill" style="background:var(--amber-glow); color:var(--amber); font-size:10px;">IA</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
+                <button id="logout" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Assistant IA Médiateur</h1>
+            <p>Posez vos questions, reformulez des messages, obtenez des conseils neutres.</p>
+        </div>
+
+        <!-- Interface de chat -->
+        <div style="display:grid; grid-template-columns:1fr 280px; gap:1.5rem;">
+            <!-- Zone de chat principale -->
+            <div class="glass-card" style="padding:1.5rem; display:flex; flex-direction:column; height:600px;">
+                <div style="border-bottom:1px solid var(--border); padding-bottom:1rem; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+                    <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center; font-size:14px;">⚡</div>
+                    <div>
+                        <h2 style="font-weight:700;">Médiateur IA</h2>
+                        <p style="font-size:12px; color:var(--txt2);">Claude Sonnet · Confidentialité garantie</p>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div id="chat-messages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:1rem; padding-right:0.5rem;">
+                    <div class="ai-message" style="background:var(--card); border:1px solid var(--amber); border-radius:14px; padding:0.75rem 1rem; max-width:80%; align-self:flex-start;">
+                        <p style="font-size:13px; color:var(--txt2); line-height:1.6;">Bonjour 👋 Je suis votre assistant IA. Comment puis-je vous aider à communiquer avec votre co-parent aujourd'hui ?</p>
+                    </div>
+                </div>
+
+                <!-- Zone de saisie -->
+                <div style="border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
+                    <form id="chat-form" style="display:flex; gap:0.5rem;">
+                        <input type="text" id="message-input" placeholder="Votre message..." class="form-input" style="flex:1;">
+                        <button type="submit" class="btn btn-primary" style="padding:0 1.5rem;">Envoyer</button>
+                    </form>
+                    <p style="font-size:11px; color:var(--txt2); margin-top:0.5rem;">Les échanges sont confidentiels et chiffrés.</p>
+                </div>
+            </div>
+
+            <!-- Outils rapides et paramètres -->
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+                <div class="glass-card" style="padding:1.5rem;">
+                    <h3 style="font-size:14px; font-weight:700; margin-bottom:1rem;">Outils rapides</h3>
+                    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                        <button class="btn btn-secondary quick-tool" style="justify-content:flex-start; gap:0.5rem; padding:0.75rem;" data-tool="reformuler">✍️ Reformuler un message</button>
+                        <button class="btn btn-secondary quick-tool" style="justify-content:flex-start; gap:0.5rem; padding:0.75rem;" data-tool="proposer">📅 Proposer des dates</button>
+                        <button class="btn btn-secondary quick-tool" style="justify-content:flex-start; gap:0.5rem; padding:0.75rem;" data-tool="resume">📄 Résumé des échanges</button>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="padding:1.5rem;">
+                    <h3 style="font-size:14px; font-weight:700; margin-bottom:0.5rem;">🔒 Confidentialité</h3>
+                    <p style="font-size:12px; color:var(--txt2); line-height:1.6;">Vos échanges sont chiffrés et ne sont pas partagés avec votre co-parent. L'IA ne conserve pas vos messages.</p>
+                </div>
+
+                <div class="glass-card" style="padding:1.5rem;">
+                    <h3 style="font-size:14px; font-weight:700; margin-bottom:0.5rem;">⚡ Suggestions</h3>
+                    <div id="suggestions-box" style="display:flex; flex-direction:column; gap:0.5rem;">
+                        <p style="font-size:12px; color:var(--txt2);">Cliquez sur un outil pour commencer.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ai.js"></script>
+    <script>
+        // Vérification authentification et MFA
+        (async () => {
+            const { user, error } = await getCurrentUser();
+            if (error || !user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const factors = await listFactors();
+            if (!factors.data?.totp?.length) {
+                window.location.href = 'mfa-setup.html';
+                return;
+            }
+        })();
+
+        // Éléments DOM
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const suggestionsBox = document.getElementById('suggestions-box');
+        const quickTools = document.querySelectorAll('.quick-tool');
+
+        // Fonction pour ajouter un message dans le chat
+        function addMessage(content, isUser = false) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = isUser ? 'user-message' : 'ai-message';
+            msgDiv.style.maxWidth = '80%';
+            msgDiv.style.alignSelf = isUser ? 'flex-end' : 'flex-start';
+            msgDiv.style.background = isUser ? 'linear-gradient(135deg, var(--amber), var(--gold))' : 'var(--card)';
+            msgDiv.style.border = isUser ? 'none' : '1px solid var(--amber)';
+            msgDiv.style.borderRadius = '14px';
+            msgDiv.style.padding = '0.75rem 1rem';
+            msgDiv.style.color = isUser ? '#000' : 'var(--txt2)';
+            msgDiv.style.marginBottom = '0.5rem';
+            msgDiv.innerHTML = `<p style="font-size:13px; line-height:1.6;">${content}</p>`;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Fonction pour appeler l'IA (via l'API serverless)
+        async function callAI(message) {
+            // Afficher un indicateur de frappe
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing';
+            typingDiv.style.background = 'var(--card)';
+            typingDiv.style.border = '1px solid var(--amber)';
+            typingDiv.style.borderRadius = '14px';
+            typingDiv.style.padding = '0.75rem 1rem';
+            typingDiv.style.maxWidth = '80%';
+            typingDiv.style.alignSelf = 'flex-start';
+            typingDiv.innerHTML = `<p style="font-size:13px; color:var(--txt2);">⏳ L'IA réfléchit...</p>`;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                // Appel à l'API /api/ai (à déployer sur Vercel)
+                const response = await fetch('/api/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, tone: 'neutre' })
+                });
+                const data = await response.json();
+                document.getElementById('typing')?.remove();
+                if (data.suggestion) {
+                    addMessage(data.suggestion, false);
+                } else {
+                    addMessage("Désolé, je n'ai pas pu traiter votre demande.", false);
+                }
+            } catch (err) {
+                document.getElementById('typing')?.remove();
+                addMessage("Erreur de connexion à l'IA.", false);
+                console.error(err);
+            }
+        }
+
+        // Gestion de l'envoi de message
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = messageInput.value.trim();
+            if (!msg) return;
+
+            addMessage(msg, true);
+            messageInput.value = '';
+
+            // Appel à l'IA
+            await callAI(msg);
+        });
+
+        // Gestion des outils rapides
+        quickTools.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const tool = btn.dataset.tool;
+                if (tool === 'reformuler') {
+                    const msg = prompt("Quel message souhaitez-vous reformuler ?");
+                    if (msg) await callAI("Reformule ce message : " + msg);
+                } else if (tool === 'proposer') {
+                    await callAI("Propose-moi des créneaux pour les vacances de Pâques.");
+                } else if (tool === 'resume') {
+                    await callAI("Fais un résumé de nos derniers échanges.");
+                }
+            });
+        });
+
+        // Suggestions dynamiques
+        function updateSuggestions() {
+            suggestionsBox.innerHTML = `
+                <button class="btn btn-secondary" style="justify-content:flex-start; padding:0.5rem; font-size:12px;" onclick="callAI('Peux-tu me proposer une réponse neutre à ce message ?')">Réponse neutre</button>
+                <button class="btn btn-secondary" style="justify-content:flex-start; padding:0.5rem; font-size:12px;" onclick="callAI('Comment organiser les vacances équitablement ?')">Vacances équitables</button>
+            `;
+        }
+        updateSuggestions();
+
+        // Déconnexion
+        document.getElementById('logout').addEventListener('click', async () => {
+            await signOut();
+        });
+    </script>
+</body>
+</html>
