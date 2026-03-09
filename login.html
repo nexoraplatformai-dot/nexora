@@ -59,37 +59,44 @@
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
 
-    <script>
-        // Attendre le chargement complet du DOM
-        document.addEventListener('DOMContentLoaded', function() {
-            const loginForm = document.getElementById('login-form');
-            if (!loginForm) {
-                console.error('Formulaire de connexion introuvable');
-                return;
-            }
+<script>
+    // Fonction d'initialisation exécutée après chargement complet
+    function initLogin() {
+        const loginForm = document.getElementById('login-form');
+        if (!loginForm) {
+            console.error('❌ Formulaire de connexion introuvable ! Vérifiez que l\'ID "login-form" est présent.');
+            return;
+        }
 
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
-                try {
-                    const { data, error } = await signIn(email, password);
-                    if (error) throw error;
+            try {
+                const { data, error } = await signIn(email, password);
+                if (error) throw error;
 
-                    const factors = await listFactors();
-                    const hasMfa = factors.data?.totp?.length > 0;
-                    if (!hasMfa) {
-                        alert('Vous devez configurer l\'authentification à deux facteurs.');
-                        window.location.href = 'mfa-setup.html';
-                    } else {
-                        window.location.href = 'mfa-verify.html';
-                    }
-                } catch (err) {
-                    alert('Erreur : ' + err.message);
+                const factors = await listFactors();
+                const hasMfa = factors.data?.totp?.length > 0;
+                if (!hasMfa) {
+                    alert('Vous devez configurer l\'authentification à deux facteurs.');
+                    window.location.href = 'mfa-setup.html';
+                } else {
+                    window.location.href = 'mfa-verify.html';
                 }
-            });
+            } catch (err) {
+                alert('Erreur : ' + err.message);
+            }
         });
-    </script>
+    }
+
+    // Attendre que le DOM soit prêt
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLogin);
+    } else {
+        initLogin(); // DOM déjà chargé
+    }
+</script>
 </body>
 </html>
