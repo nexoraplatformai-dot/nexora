@@ -37,10 +37,24 @@ async function deleteWorkflow(id) {
 }
 
 async function executeWorkflow(workflowId) {
-    const { data, error } = await supabaseClient.functions.invoke('execute-workflow', {
-        body: { workflowId }
+  try {
+    const response = await fetch('/api/execute-workflow', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ workflowId })
     });
-    return { data, error };
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erreur inconnue');
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (err) {
+    console.error('Erreur exécution workflow:', err);
+    return { data: null, error: err.message };
+  }
 }
 
 const WORKFLOW_TYPES = {
