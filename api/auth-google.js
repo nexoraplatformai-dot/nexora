@@ -1,10 +1,18 @@
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
-const requiredEnv = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'];
+// Vérification des variables d'environnement
+const requiredEnv = [
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'GOOGLE_REDIRECT_URI'
+];
 for (const env of requiredEnv) {
   if (!process.env[env]) {
-    throw new Error(`Missing environment variable: ${env}`);
+    console.error(`Missing env: ${env}`);
+    return res.status(500).send(`Configuration error: missing ${env}`);
   }
 }
 
@@ -17,26 +25,41 @@ const oauth2Client = new google.auth.OAuth2(
 
 export default async function handler(req, res) {
   try {
-    if (req.method === 'GET' && req.query.code) {
-      // Callback après autorisation
-      const { code, state } = req.query;
-      if (!state) {
-        return res.status(400).json({ error: 'Missing state parameter' });
+    // Étape 1: Générer l'URL d'autorisation
+    if (req.method === 'GET' && !req.query.code) {
+      // Récupérer l'userId depuis le state (encodé en base64)
+      const state = req.query.state ? JSON.parse(Buffer.from(req.query.state, 'base64').toString()) : null;
+      const userId = state?.userId;
+      if (!userId) {
+        return res.status(400).send('Missing userId in state');
       }
+      const url = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: ['https://www.googleapis.com/auth/calendar.readonly'],
+        state: req.query.state, // repasser l'état
+        prompt: 'consent'
+      });
+      return res.redirect(url);
+    }
 
-      // Décoder le state pour obtenir userId
+    // Étape 2: Callback avec le code
+    if (req.method === 'GET' && req.query.code) {
+      const { code, state } = req.query;
+      // Décoder le state pour récupérer userId
       let userId;
       try {
-        const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-        userId = decoded.userId;
-      } catch (err) {
-        return res.status(400).json({ error: 'Invalid state parameter' });
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        userId = stateData.userId;
+      } catch (e) {
+        return res.status(400).send('Invalid state parameter');
       }
 
+      // Échanger le code contre des tokens
       const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
 
-      // Stocker les tokens dans la table user_tokens
-      await supabase.from('user_tokens').upsert({
+      // Stocker les tokens dans Supabase
+      const { error } = await supabase.from('user_tokens').upsert({
         user_id: userId,
         provider: 'google',
         access_token: tokens.access_token,
@@ -44,23 +67,22 @@ export default async function handler(req, res) {
         expires_at: new Date(Date.now() + tokens.expiry_date).toISOString()
       }, { onConflict: 'user_id, provider' });
 
+      if (error) {
+        console.error('Supabase error:', error);
+        return res.status(500).send('Error storing tokens');
+      }
+
+      // Rediriger vers l'interface avec succès
       return res.redirect('/workflow-edit.html?success=google_connected');
-    } else {
-      // Générer l'URL d'autorisation
-      // Ici, on attend que le client passe le state dans la requête initiale
-      // Pour simplifier, on peut générer l'URL sans state et la renvoyer
-      const url = oauth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: ['https://www.googleapis.com/auth/calendar.readonly'],
-        prompt: 'consent',
-        // Le state doit être fourni par le client
-        // On va le passer en paramètre de la requête
-        state: req.query.state || ''
-      });
-      return res.redirect(url);
     }
+
+    res.status(405).send('Method not allowed');
   } catch (err) {
-    console.error('Erreur dans auth-google:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('OAuth error:', err);
+    // Gérer l'erreur invalid_grant
+    if (err.message.includes('invalid_grant')) {
+      return res.redirect('/workflow-edit.html?error=invalid_grant');
+    }
+    res.status(500).send('OAuth failed: ' + err.message);
   }
 }
