@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXORA – Inscription</title>
+    <title>NEXORA – Configuration 2FA</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Pas besoin de dashboard.css sur la page d'inscription -->
-    
-    <!-- Ordre des scripts : d'abord Supabase, puis config, puis auth -->
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
-    <!-- Pas besoin de dashboard.js ici -->
+    <script src="js/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem;">
     <div style="width:100%; max-width:440px;">
-        <a href="dashboard.html" style="display:inline-block; margin-bottom:2rem;">
+        <a href="index.html" style="display:inline-block; margin-bottom:2rem;">
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center; font-size:16px;">⚡</div>
                 <span style="font-size:20px; font-weight:800; letter-spacing:-0.045em; color:var(--txt);">NEXORA</span>
@@ -53,69 +52,61 @@
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script>
-    // Création du client Supabase
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // Variable factorId (une seule fois)
-    let factorId = null;
+    <script>
+        // supabaseClient vient de auth.js, pas besoin de le recréer
+        let factorId = null;
 
-    async function setupMFA() {
-        try {
-            const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-            if (userError || !user) {
-                alert('Vous devez être connecté.');
-                window.location.href = 'login.html';
+        async function setupMFA() {
+            try {
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                if (userError || !user) {
+                    alert('Vous devez être connecté.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const { data, error } = await supabaseClient.auth.mfa.enroll({ factorType: 'totp' });
+                if (error) throw error;
+
+                factorId = data.id;
+                const uri = data.totp.uri;
+
+                // Afficher le lien manuel
+                document.getElementById('manual-uri').style.display = 'block';
+                document.getElementById('uri-link').href = uri;
+                document.getElementById('uri-link').textContent = uri;
+
+                // Générer QR code
+                const qr = qrcode(0, 'M');
+                qr.addData(uri);
+                qr.make();
+                document.getElementById('qrcode').innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
+            } catch (err) {
+                document.getElementById('qrcode').innerHTML = '<p style="color:red;">Erreur : ' + err.message + '</p>';
+            }
+        }
+
+        setupMFA();
+
+        document.getElementById('mfa-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('code').value;
+
+            if (!factorId) {
+                alert('Configuration en cours, veuillez patienter...');
                 return;
             }
 
-            const { data, error } = await supabaseClient.auth.mfa.enroll({ factorType: 'totp' });
-            if (error) throw error;
+            try {
+                const { error } = await supabaseClient.auth.mfa.challengeAndVerify({ factorId, code });
+                if (error) throw error;
 
-            factorId = data.id;
-            const uri = data.totp.uri;
-
-            // Afficher le lien manuel (si l'élément existe)
-            const manualDiv = document.getElementById('manual-uri');
-            const uriLink = document.getElementById('uri-link');
-            if (manualDiv && uriLink) {
-                manualDiv.style.display = 'block';
-                uriLink.href = uri;
-                uriLink.textContent = uri;
+                alert('MFA activée avec succès !');
+                window.location.href = 'dashboard.html';
+            } catch (err) {
+                alert('Code invalide : ' + err.message);
             }
-
-            // Générer QR code
-            const qr = qrcode(0, 'M');
-            qr.addData(uri);
-            qr.make();
-            document.getElementById('qrcode').innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
-        } catch (err) {
-            document.getElementById('qrcode').innerHTML = '<p style="color:red;">Erreur : ' + err.message + '</p>';
-        }
-    }
-
-    setupMFA();
-
-    document.getElementById('mfa-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = document.getElementById('code').value;
-
-        if (!factorId) {
-            alert('Configuration en cours, veuillez patienter...');
-            return;
-        }
-
-        try {
-            const { error } = await supabaseClient.auth.mfa.challengeAndVerify({ factorId, code });
-            if (error) throw error;
-
-            alert('MFA activée avec succès !');
-            window.location.href = 'dashboard.html';
-        } catch (err) {
-            alert('Code invalide : ' + err.message);
-        }
-    });
-</script>
+        });
+    </script>
 </body>
 </html>

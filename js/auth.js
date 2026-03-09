@@ -1,5 +1,5 @@
-// js/auth.js
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialisation du client Supabase (utilise les variables globales de config.js)
+const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 // Inscription
 async function signUp(email, password) {
