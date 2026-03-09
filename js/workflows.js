@@ -1,57 +1,108 @@
-const { createClient } = require('@supabase/supabase-js');
+// js/workflows.js
+// Dépend de config.js et auth.js (supabaseClient est global via window.supabaseClient)
 
-module.exports = async function handler(req, res) {
-  // Seules les requêtes POST sont acceptées
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // Initialiser le client Supabase avec la clé service (pour avoir les droits d'écriture)
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-
-  const { workflowId } = req.body;
-  if (!workflowId) {
-    return res.status(400).json({ error: 'workflowId manquant' });
-  }
-
-  try {
-    // Récupérer le workflow depuis la base
-    const { data: workflow, error } = await supabase
-      .from('workflows')
-      .select('*')
-      .eq('id', workflowId)
-      .single();
-
-    if (error || !workflow) {
-      console.error('Workflow non trouvé:', workflowId, error);
-      return res.status(404).json({ error: 'Workflow non trouvé' });
-    }
-
-    // Simuler une exécution (vous pourrez plus tard y mettre la vraie logique)
-    console.log(`Exécution du workflow "${workflow.name}" (ID: ${workflowId})`);
-
-    // Optionnel : enregistrer un log d'exécution (si la table workflow_logs existe)
+// Créer un workflow
+async function createWorkflow(workflowData) {
     try {
-      await supabase.from('workflow_logs').insert({
-        workflow_id: workflowId,
-        status: 'success',
-        executed_at: new Date().toISOString()
-      });
-    } catch (logErr) {
-      console.warn('Impossible d’écrire dans workflow_logs (peut-être table manquante)');
+        const { data, error } = await window.supabaseClient
+            .from('workflows')
+            .insert([workflowData])
+            .select();
+        return { data, error };
+    } catch (err) {
+        return { data: null, error: err.message };
     }
+}
 
-    // Réponse de succès
-    res.status(200).json({ 
-      success: true, 
-      message: 'Workflow exécuté avec succès',
-      workflow: workflow.name
-    });
-  } catch (err) {
-    console.error('Erreur dans execute-workflow:', err);
-    res.status(500).json({ error: err.message });
-  }
+// Récupérer tous les workflows de l'utilisateur connecté
+async function getWorkflows() {
+    try {
+        const { data: { user } } = await window.supabaseClient.auth.getUser();
+        if (!user) return { data: null, error: 'Non authentifié' };
+        const { data, error } = await window.supabaseClient
+            .from('workflows')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+        return { data, error };
+    } catch (err) {
+        return { data: null, error: err.message };
+    }
+}
+
+// Mettre à jour un workflow
+async function updateWorkflow(id, updates) {
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('workflows')
+            .update(updates)
+            .eq('id', id)
+            .select();
+        return { data, error };
+    } catch (err) {
+        return { data: null, error: err.message };
+    }
+}
+
+// Supprimer un workflow
+async function deleteWorkflow(id) {
+    try {
+        const { error } = await window.supabaseClient
+            .from('workflows')
+            .delete()
+            .eq('id', id);
+        return { error };
+    } catch (err) {
+        return { error: err.message };
+    }
+}
+
+// Exécuter un workflow (appel à l'API Vercel)
+async function executeWorkflow(workflowId) {
+    try {
+        const response = await fetch('/api/execute-workflow', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ workflowId })
+        });
+
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            // Si la réponse n'est pas du JSON (ex: erreur 500 avec HTML), on récupère le texte
+            const text = await response.text();
+            data = { error: text };
+        }
+
+        if (!response.ok) {
+            throw new Error(data.error || `Erreur HTTP ${response.status}`);
+        }
+
+        return { data, error: null };
+    } catch (err) {
+        console.error('Erreur exécution workflow:', err);
+        const errorMessage = err.message || String(err) || 'Erreur inconnue';
+        return { data: null, error: errorMessage };
+    }
+}
+
+// Types de workflows prédéfinis (pour référence)
+const WORKFLOW_TYPES = {
+    RAPPEL_RDV: 'rappel_rdv',
+    QUALIFICATION_LEAD: 'qualification_lead',
+    RELANCE_CLIENT: 'relance_client',
+    REPORTING: 'reporting'
+};
+
+// Configuration par défaut pour un rappel de rendez-vous (exemple)
+const defaultRappelConfig = {
+    triggers: [{ type: 'calendar_event', calendar: 'google', filter: 'rendez-vous' }],
+    actions: [
+        { type: 'sms', delay: -1, message: 'Rappel: votre rendez-vous demain à {heure}' },
+        { type: 'email', delay: -2, message: 'Confirmez-vous votre présence ?' }
+    ]
 };
