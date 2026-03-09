@@ -1,4 +1,4 @@
-// js/auth.js
+// Initialisation du client Supabase global
 window.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 // Inscription

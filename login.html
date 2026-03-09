@@ -3,21 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXORA – Inscription</title>
+    <title>NEXORA – Connexion</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Pas besoin de dashboard.css sur la page d'inscription -->
-    
-    <!-- Ordre des scripts : d'abord Supabase, puis config, puis auth -->
+    <!-- Ordre strict -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
-    <!-- Pas besoin de dashboard.js ici -->
 </head>
 <body style="background: var(--midnight); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem;">
     <div style="width:100%; max-width:440px;">
-        <!-- Logo -->
         <a href="index.html" style="display:inline-block; margin-bottom:2rem;">
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center; font-size:16px;">⚡</div>
@@ -25,7 +21,6 @@
             </div>
         </a>
 
-        <!-- Login Card -->
         <div class="glass-card" style="padding:2rem;">
             <h1 style="font-size:24px; font-weight:800; margin-bottom:0.5rem;">Connexion</h1>
             <p style="color:var(--txt2); font-size:14px; margin-bottom:2rem;">Accédez à votre espace sécurisé.</p>
@@ -61,42 +56,40 @@
             </p>
         </div>
 
-        <!-- Copyright -->
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
 
-<script>
-    (async function() {
-        try {
-            const { user } = await getCurrentUser();
-            if (user) {
-                window.location.href = 'dashboard.html';
+    <script>
+        // Attendre le chargement complet du DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('login-form');
+            if (!loginForm) {
+                console.error('Formulaire de connexion introuvable');
                 return;
             }
-        } catch (e) { /* ignore */ }
-    })();
 
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
 
-        try {
-            const { data, error } = await signIn(email, password);
-            if (error) throw error;
+                try {
+                    const { data, error } = await signIn(email, password);
+                    if (error) throw error;
 
-            const factors = await listFactors();
-            const hasMfa = factors.data?.totp?.length > 0;
-            if (!hasMfa) {
-                alert('Vous devez configurer l\'authentification à deux facteurs.');
-                window.location.href = 'mfa-setup.html';
-            } else {
-                window.location.href = 'mfa-verify.html';
-            }
-        } catch (err) {
-            alert('Erreur : ' + err.message);
-        }
-    });
-</script>
+                    const factors = await listFactors();
+                    const hasMfa = factors.data?.totp?.length > 0;
+                    if (!hasMfa) {
+                        alert('Vous devez configurer l\'authentification à deux facteurs.');
+                        window.location.href = 'mfa-setup.html';
+                    } else {
+                        window.location.href = 'mfa-verify.html';
+                    }
+                } catch (err) {
+                    alert('Erreur : ' + err.message);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
