@@ -81,27 +81,35 @@
     </div>
 
     <script>
-        (async function() {
-            // Vérification authentification et MFA
-            const { user, error } = await getCurrentUser();
-            if (error || !user) {
-                window.location.href = 'login.html';
-                return;
-            }
-            const factors = await listFactors();
-            if (!factors.data?.totp?.length) {
-                window.location.href = 'mfa-setup.html';
-                return;
-            }
+    (async function() {
+        // Vérification authentification et MFA (inchangé)
+        const { user, error } = await getCurrentUser();
+        if (error || !user) {
+            window.location.href = 'login.html';
+            return;
+        }
+        const factors = await listFactors();
+        if (!factors.data?.totp?.length) {
+            window.location.href = 'mfa-setup.html';
+            return;
+        }
 
-            // Charger et afficher les workflows
-            await loadWorkflows();
+        // Charger les workflows
+        await loadWorkflows();
 
-            // Gestionnaire pour créer un workflow
-            document.getElementById('new-workflow').addEventListener('click', (e) => {
+        // Gestionnaire pour créer un workflow
+        const newBtn = document.getElementById('new-workflow');
+        if (newBtn) {
+            newBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 openModal();
             });
+        } else {
+            console.error('Bouton #new-workflow introuvable');
+        }
+
+        // ... reste du code (modal, formulaire, etc.)
+    })();
 
             // Fermer le modal
             document.getElementById('close-modal').addEventListener('click', closeModal);
