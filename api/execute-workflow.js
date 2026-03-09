@@ -1,6 +1,7 @@
-const { createClient } = require('@supabase/supabase-js');
+// api/execute-workflow.js (ES module)
+import { createClient } from '@supabase/supabase-js';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   console.log('=== execute-workflow called ===');
   console.log('Method:', req.method);
   console.log('Body:', req.body);
@@ -55,4 +56,4 @@ module.exports = async function handler(req, res) {
     console.error('❌ Erreur:', err);
     return res.status(500).json({ error: err.message });
   }
-};
+}
