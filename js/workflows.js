@@ -1,5 +1,6 @@
 // js/workflows.js
-// Dépend de config.js et auth.js (supabaseClient est global via window.supabaseClient)
+// Dépend de config.js et auth.js (window.supabaseClient doit être défini)
+// Toutes les fonctions nécessaires à la gestion des workflows sont ici.
 
 // Créer un workflow
 async function createWorkflow(workflowData) {
@@ -10,6 +11,7 @@ async function createWorkflow(workflowData) {
             .select();
         return { data, error };
     } catch (err) {
+        console.error('createWorkflow error:', err);
         return { data: null, error: err.message };
     }
 }
@@ -26,6 +28,7 @@ async function getWorkflows() {
             .order('created_at', { ascending: false });
         return { data, error };
     } catch (err) {
+        console.error('getWorkflows error:', err);
         return { data: null, error: err.message };
     }
 }
@@ -40,6 +43,7 @@ async function updateWorkflow(id, updates) {
             .select();
         return { data, error };
     } catch (err) {
+        console.error('updateWorkflow error:', err);
         return { data: null, error: err.message };
     }
 }
@@ -53,6 +57,7 @@ async function deleteWorkflow(id) {
             .eq('id', id);
         return { error };
     } catch (err) {
+        console.error('deleteWorkflow error:', err);
         return { error: err.message };
     }
 }
@@ -73,7 +78,6 @@ async function executeWorkflow(workflowId) {
         if (contentType && contentType.includes('application/json')) {
             data = await response.json();
         } else {
-            // Si la réponse n'est pas du JSON (ex: erreur 500 avec HTML), on récupère le texte
             const text = await response.text();
             data = { error: text };
         }
@@ -84,25 +88,16 @@ async function executeWorkflow(workflowId) {
 
         return { data, error: null };
     } catch (err) {
-        console.error('Erreur exécution workflow:', err);
+        console.error('executeWorkflow error:', err);
         const errorMessage = err.message || String(err) || 'Erreur inconnue';
         return { data: null, error: errorMessage };
     }
 }
 
-// Types de workflows prédéfinis (pour référence)
+// Types de workflows prédéfinis (optionnel)
 const WORKFLOW_TYPES = {
     RAPPEL_RDV: 'rappel_rdv',
     QUALIFICATION_LEAD: 'qualification_lead',
     RELANCE_CLIENT: 'relance_client',
     REPORTING: 'reporting'
-};
-
-// Configuration par défaut pour un rappel de rendez-vous (exemple)
-const defaultRappelConfig = {
-    triggers: [{ type: 'calendar_event', calendar: 'google', filter: 'rendez-vous' }],
-    actions: [
-        { type: 'sms', delay: -1, message: 'Rappel: votre rendez-vous demain à {heure}' },
-        { type: 'email', delay: -2, message: 'Confirmez-vous votre présence ?' }
-    ]
 };

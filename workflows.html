@@ -8,14 +8,14 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Ordre des scripts -->
+    <!-- Scripts dans l'ordre -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/workflows.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh;">
-    <!-- Navigation -->
+    <!-- Navigation identique au dashboard -->
     <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
         <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
             <div style="display:flex; align-items:center; gap:1rem;">
@@ -45,17 +45,60 @@
 
         <!-- Liste des workflows -->
         <div id="workflows-list" class="grid-2" style="margin-top:2rem;">
-            <!-- Les cartes seront injectées dynamiquement ici -->
             <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">
                 Chargement des workflows...
             </div>
         </div>
     </main>
 
+    <!-- Modal de création/édition (optionnel) -->
+    <div id="workflow-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:1000; align-items:center; justify-content:center;">
+        <div class="glass-card" style="max-width:500px; width:90%; padding:2rem; position:relative;">
+            <button id="close-modal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--txt2); font-size:1.5rem; cursor:pointer;">&times;</button>
+            <h2 id="modal-title" style="margin-bottom:1.5rem;">Créer un workflow</h2>
+            <form id="workflow-form">
+                <div class="form-group">
+                    <label class="form-label">Nom du workflow</label>
+                    <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de rendez-vous">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select id="workflow-type" class="form-input" required>
+                        <option value="rappel_rdv">Rappel de rendez-vous</option>
+                        <option value="qualification_lead">Qualification de lead</option>
+                        <option value="relance_client">Relance client</option>
+                        <option value="reporting">Reporting</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Configuration (JSON)</label>
+                    <textarea id="workflow-config" class="form-input" rows="5" placeholder='{"triggers":[...],"actions":[...]}' required></textarea>
+                </div>
+                <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
+                    <input type="checkbox" id="active" checked>
+                    <label for="active">Activer immédiatement</label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         (async function() {
-            // Vérification authentification et MFA (via fonctions globales)
-            const { user, error } = await getCurrentUser(); // de auth.js
+            // Attendre que le DOM soit prêt (bien que les scripts soient placés avant, c'est une sécurité)
+            if (document.readyState === 'loading') {
+                await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+            }
+
+            // Vérifier que les fonctions nécessaires sont disponibles
+            if (typeof getWorkflows !== 'function') {
+                console.error('getWorkflows n\'est pas défini. Vérifiez que workflows.js est chargé.');
+                alert('Erreur critique : les fonctions de workflow ne sont pas disponibles. Rechargez la page.');
+                return;
+            }
+
+            // Vérification authentification et MFA
+            const { user, error } = await getCurrentUser();
             if (error || !user) {
                 window.location.href = 'login.html';
                 return;
@@ -69,83 +112,120 @@
             // Charger et afficher les workflows
             await loadWorkflows();
 
+            // Gestionnaire pour créer un workflow (redirection directe vers workflow-edit.html)
+            const newBtn = document.getElementById('new-workflow');
+            if (newBtn) {
+                newBtn.addEventListener('click', (e) => {
+                    // Le lien fait déjà la redirection, mais on peut empêcher si besoin
+                });
+            }
+
+            // Gestionnaires pour le modal (si utilisé)
+            const modal = document.getElementById('workflow-modal');
+            const closeBtn = document.getElementById('close-modal');
+            const openModalBtn = document.getElementById('new-workflow-modal'); // si vous avez un bouton dédié
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+            }
+
+            window.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+
+            // Fonction pour charger les workflows (définie localement)
+            async function loadWorkflows() {
+                const container = document.getElementById('workflows-list');
+                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">Chargement...</div>';
+
+                try {
+                    const { data: workflows, error } = await getWorkflows();
+                    if (error) throw error;
+
+                    if (!workflows || workflows.length === 0) {
+                        container.innerHTML = `
+                            <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">
+                                <p>Aucun workflow pour le moment.</p>
+                                <a href="workflow-edit.html" class="btn btn-primary" style="margin-top:1rem;">Créer mon premier workflow</a>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // Générer les cartes
+                    container.innerHTML = '';
+                    workflows.forEach(w => {
+                        const card = document.createElement('div');
+                        card.className = 'glass-card';
+                        card.style.padding = '1.5rem';
+                        const date = new Date(w.created_at).toLocaleDateString();
+                        card.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div>
+                                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.25rem;">${w.name}</h3>
+                                    <p style="font-size:0.8rem; color:var(--amber); text-transform:uppercase;">${w.type}</p>
+                                </div>
+                                <div class="pill" style="background:${w.type==='rappel_rdv'?'var(--amber-glow)':'var(--teal-glow)'}">
+                                    ${date}
+                                </div>
+                            </div>
+                            <div style="margin:1rem 0; font-size:0.9rem; color:var(--txt2);">
+                                <strong>Actions:</strong> ${w.config?.actions?.length || 0}
+                            </div>
+                            <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                                <button class="btn btn-secondary btn-edit" data-id="${w.id}" style="padding:0.3rem 0.8rem;">Modifier</button>
+                                <button class="btn btn-secondary btn-delete" data-id="${w.id}" style="padding:0.3rem 0.8rem; border-color:#EF4444; color:#EF4444;">Supprimer</button>
+                                <button class="btn btn-primary btn-execute" data-id="${w.id}" style="padding:0.3rem 1rem;">Exécuter</button>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+
+                    // Ajouter les écouteurs
+                    document.querySelectorAll('.btn-edit').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const id = e.target.dataset.id;
+                            window.location.href = `workflow-edit.html?id=${id}`;
+                        });
+                    });
+
+                    document.querySelectorAll('.btn-delete').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const id = e.target.dataset.id;
+                            if (confirm('Supprimer ce workflow ?')) {
+                                const { error } = await deleteWorkflow(id);
+                                if (error) alert('Erreur : ' + error);
+                                else await loadWorkflows();
+                            }
+                        });
+                    });
+
+                    document.querySelectorAll('.btn-execute').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const id = e.target.dataset.id;
+                            const result = await executeWorkflow(id);
+                            if (result.error) {
+                                alert('Erreur : ' + result.error);
+                            } else {
+                                alert('Workflow exécuté avec succès !');
+                            }
+                        });
+                    });
+
+                } catch (err) {
+                    container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--error);">Erreur : ${err.message}</div>`;
+                }
+            }
+
             // Déconnexion
             document.getElementById('logout').addEventListener('click', async () => {
                 await signOut();
             });
         })();
-
-        async function loadWorkflows() {
-            const container = document.getElementById('workflows-list');
-            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">Chargement...</div>';
-
-            try {
-                const { data: workflows, error } = await getWorkflows(); // de workflows.js
-                if (error) throw error;
-
-                if (!workflows || workflows.length === 0) {
-                    container.innerHTML = `
-                        <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">
-                            <p>Aucun workflow pour le moment.</p>
-                            <a href="workflow-edit.html" class="btn btn-primary" style="margin-top:1rem;">Créer mon premier workflow</a>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Générer les cartes
-                container.innerHTML = '';
-                workflows.forEach(w => {
-                    const card = document.createElement('div');
-                    card.className = 'glass-card';
-                    card.style.padding = '1.5rem';
-                    card.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                            <div>
-                                <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.25rem;">${w.name}</h3>
-                                <p style="font-size:0.8rem; color:var(--amber); text-transform:uppercase;">${w.type}</p>
-                            </div>
-                            <div class="pill" style="background:${w.type==='rappel_rdv'?'var(--amber-glow)':'var(--teal-glow)'}">
-                                ${new Date(w.created_at).toLocaleDateString()}
-                            </div>
-                        </div>
-                        <div style="margin:1rem 0; font-size:0.9rem; color:var(--txt2);">
-                            <strong>Actions:</strong> ${w.config?.actions?.length || 0}
-                        </div>
-                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                            <a href="workflow-edit.html?id=${w.id}" class="btn btn-secondary" style="padding:0.3rem 0.8rem;">Modifier</a>
-                            <button class="btn btn-secondary btn-delete" data-id="${w.id}" style="padding:0.3rem 0.8rem; border-color:#EF4444; color:#EF4444;">Supprimer</button>
-                            <button class="btn btn-primary btn-execute" data-id="${w.id}" style="padding:0.3rem 1rem;">Exécuter</button>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-
-                // Ajouter les écouteurs pour les boutons
-                document.querySelectorAll('.btn-delete').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const id = e.target.dataset.id;
-                        if (confirm('Supprimer ce workflow ?')) {
-                            const { error } = await deleteWorkflow(id); // de workflows.js
-                            if (error) alert('Erreur : ' + error.message);
-                            else await loadWorkflows();
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.btn-execute').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const id = e.target.dataset.id;
-                        const { data, error } = await executeWorkflow(id); // de workflows.js
-                        if (error) alert('Erreur : ' + error.message);
-                        else alert('Workflow exécuté avec succès !');
-                    });
-                });
-
-            } catch (err) {
-                container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--error);">Erreur : ${err.message}</div>`;
-            }
-        }
     </script>
 </body>
 </html>
