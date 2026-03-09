@@ -8,28 +8,93 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        /* Renforcement des effets visuels */
+        .glass-card {
+            transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
+            border: 1px solid var(--border);
+            background: var(--card);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Surbrillance au survol (plus marquée) */
+        .glass-card:hover {
+            border-color: var(--amber);
+            box-shadow: 0 0 30px var(--amber-glow), 0 10px 40px rgba(0,0,0,0.4);
+            transform: translateY(-4px) scale(1.02);
+        }
+
+        /* Animation de scintillement orange (dégradé tournant) */
+        @keyframes borderPulse {
+            0% { border-color: var(--amber); box-shadow: 0 0 20px var(--amber-glow); }
+            50% { border-color: var(--amber-lt); box-shadow: 0 0 40px var(--amber-glow), 0 0 60px rgba(245,158,11,0.3); }
+            100% { border-color: var(--amber); box-shadow: 0 0 20px var(--amber-glow); }
+        }
+
+        .glass-card.highlight {
+            animation: borderPulse 2s infinite ease-in-out;
+            border-width: 2px;
+        }
+
+        /* Amélioration des notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+            animation: slideIn 0.3s ease;
+            backdrop-filter: blur(5px);
+            border-left: 4px solid rgba(255,255,255,0.5);
+        }
+        .notification.success { background: var(--teal); color: white; }
+        .notification.error { background: #EF4444; color: white; }
+        .notification.info { background: var(--amber); color: #000; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Spinner amélioré */
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            border-top-color: var(--amber);
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh;">
-    <!-- Navigation -->
-<nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
-    <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
-        <div style="display:flex; align-items:center; gap:1rem;">
-            <a href="dashboard.html" style="display:flex; align-items:center; gap:8px; text-decoration:none;">
-                <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
-                <span style="font-weight:800;">NEXORA</span>
-            </a>
-            <span class="pill" style="background:var(--amber-glow); color:var(--amber); font-size:10px;">Bêta</span>
+    <!-- Navigation avec bouton Accueil -->
+    <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
+        <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <a href="dashboard.html" style="display:flex; align-items:center; gap:8px; text-decoration:none;">
+                    <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
+                    <span style="font-weight:800;">NEXORA</span>
+                </a>
+                <span class="pill" style="background:var(--amber-glow); color:var(--amber); font-size:10px;">Bêta</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <a href="dashboard.html" style="color:var(--txt2);">Accueil</a>
+                <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
+                <button id="logout" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Déconnexion</button>
+            </div>
         </div>
-        <div style="display:flex; align-items:center; gap:1rem;">
-            <a href="dashboard.html" style="color:var(--txt2);">Accueil</a> <!-- Ajout -->
-            <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
-            <button id="logout" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Déconnexion</button>
-        </div>
-    </div>
-</nav>
+    </nav>
+
+    <!-- Conteneur notifications -->
+    <div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
 
     <main style="max-width:1280px; margin:2rem auto; padding:0 2rem;">
         <h1 style="font-size:2rem; font-weight:800; margin-bottom:0.5rem;">Bonjour !</h1>
@@ -60,8 +125,8 @@
             </div>
         </div>
 
-        <!-- Nouveau workflow -->
-        <div class="glass-card" style="padding:2rem; margin-bottom:2rem;">
+        <!-- Nouveau workflow (avec classe highlight pour attirer l'attention) -->
+        <div class="glass-card highlight" style="padding:2rem; margin-bottom:2rem;">
             <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">Créer votre premier workflow</h2>
             <p style="color:var(--txt2); margin-bottom:1.5rem;">Automatisez les rappels de rendez-vous en quelques clics.</p>
             <a href="workflow-edit.html" class="btn btn-primary">➕ Nouveau workflow</a>
@@ -80,29 +145,27 @@
     </main>
 
     <script>
-	function showNotification(message, type = 'success') {
-    const container = document.getElementById('notification-container');
-    const notif = document.createElement('div');
-    notif.className = `notification ${type}`;
-    notif.textContent = message;
-    container.appendChild(notif);
-    setTimeout(() => notif.remove(), 3000);
-}
+        // Fonction de notification
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            container.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
+
         (async function() {
-            // Fonctions utilitaires
             async function getWorkflowsDirect() {
                 try {
                     const { data: { user } } = await window.supabaseClient.auth.getUser();
                     if (!user) return { data: null, error: 'Non authentifié' };
-                    
                     const { data: workflows, error } = await window.supabaseClient
                         .from('workflows')
                         .select('*')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false });
-                    
                     if (error) throw error;
-
                     const workflowsWithLogs = await Promise.all(workflows.map(async (w) => {
                         const { data: logs, error: logError } = await window.supabaseClient
                             .from('workflow_logs')
@@ -115,7 +178,6 @@
                         const lastExecuted = logs && logs.length > 0 ? logs[0].executed_at : null;
                         return { ...w, last_executed: lastExecuted };
                     }));
-                    
                     return { data: workflowsWithLogs, error: null };
                 } catch (err) {
                     return { data: null, error: err.message };
@@ -136,14 +198,13 @@
                         return { data, error: null };
                     } else {
                         const text = await response.text();
-                        throw new Error(`Réponse non JSON (code ${response.status}): ${text.substring(0,200)}`);
+                        throw new Error(`Réponse non JSON (code ${response.status})`);
                     }
                 } catch (err) {
                     return { data: null, error: err.message };
                 }
             }
 
-            // Initialisation
             try {
                 const { data: { user }, error } = await window.supabaseClient.auth.getUser();
                 if (error || !user) { window.location.href = 'login.html'; return; }
@@ -164,56 +225,52 @@
 
                 const recent = workflows.slice(0, 3);
                 let html = '';
-                recent.forEach(w => {
+                recent.forEach((w, index) => {
                     const lastExecuted = w.last_executed ? new Date(w.last_executed).toLocaleString() : null;
+                    // Ajouter la classe highlight uniquement au premier de la liste (optionnel)
+                    const cardClass = index === 0 ? 'glass-card highlight' : 'glass-card';
                     html += `
-                        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); padding:0.8rem 0;">
-                            <div>
-                                <strong style="color:var(--txt);">
-                                    ${w.name}
-                                    ${lastExecuted ? '<span style="color:var(--teal); margin-left:0.5rem;" title="Dernière exécution : ' + lastExecuted + '">✅</span>' : ''}
-                                </strong><br>
-                                <span style="font-size:0.8rem; color:var(--amber);">${w.type}</span>
-                            </div>
-                            <div style="display:flex; gap:0.5rem;">
-                                <button class="btn-execute-recent" data-id="${w.id}" data-executed="${!!lastExecuted}" style="background:transparent; border:1px solid var(--amber); color:var(--amber); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Exécuter</button>
-                                <button class="btn-edit-recent" data-id="${w.id}" style="background:transparent; border:1px solid var(--txt2); color:var(--txt2); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Modifier</button>
+                        <div class="${cardClass}" style="margin-bottom:1rem; padding:1.2rem;">
+                            <div style="display:flex; align-items:center; justify-content:space-between;">
+                                <div>
+                                    <strong style="color:var(--txt);">
+                                        ${w.name}
+                                        ${lastExecuted ? '<span style="color:var(--teal); margin-left:0.5rem;" title="Dernière exécution : ' + lastExecuted + '">✅</span>' : ''}
+                                    </strong><br>
+                                    <span style="font-size:0.8rem; color:var(--amber);">${w.type}</span>
+                                </div>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button class="btn-execute-recent" data-id="${w.id}" data-executed="${!!lastExecuted}" style="background:transparent; border:1px solid var(--amber); color:var(--amber); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Exécuter</button>
+                                    <button class="btn-edit-recent" data-id="${w.id}" style="background:transparent; border:1px solid var(--txt2); color:var(--txt2); border-radius:6px; padding:0.2rem 0.6rem; font-size:0.8rem; cursor:pointer;">Modifier</button>
+                                </div>
                             </div>
                         </div>
                     `;
                 });
                 recentContainer.innerHTML = html;
 
-                // Écouteurs avec gestion des doubles clics
                 document.querySelectorAll('.btn-execute-recent').forEach(btn => {
                     let executing = false;
                     btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
-                        if (executing) return; // Empêche les doubles clics
+                        if (executing) return;
                         const id = e.target.dataset.id;
                         const alreadyExecuted = e.target.dataset.executed === 'true';
-                        
-                        // Option : message si déjà exécuté
-                        if (alreadyExecuted) {
-                            if (!confirm('Ce workflow a déjà été exécuté. Voulez-vous vraiment l\'exécuter à nouveau ?')) {
-                                return;
-                            }
-                        }
-
+                        if (alreadyExecuted && !confirm('Ce workflow a déjà été exécuté. Voulez-vous vraiment l\'exécuter à nouveau ?')) return;
                         executing = true;
                         const originalText = btn.textContent;
-                        btn.textContent = '⏳';
+                        btn.innerHTML = '<span class="spinner"></span>';
                         btn.disabled = true;
 
                         const result = await executeWorkflowDirect(id);
                         if (result.error) {
-                            alert('Erreur : ' + result.error);
+                            showNotification('Erreur : ' + result.error, 'error');
+                            btn.textContent = originalText;
+                            btn.disabled = false;
                         } else {
-                            alert('Workflow exécuté avec succès !');
-                            location.reload(); // Recharge pour mettre à jour la coche
+                            showNotification('Workflow exécuté avec succès !', 'success');
+                            setTimeout(() => location.reload(), 1500);
                         }
-                        btn.textContent = originalText;
-                        btn.disabled = false;
                         executing = false;
                     });
                 });
@@ -237,6 +294,5 @@
             });
         })();
     </script>
-	<div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
 </body>
 </html>
