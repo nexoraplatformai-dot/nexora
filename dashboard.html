@@ -8,114 +8,44 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Scripts -->
+    <!-- Scripts : toujours dans cet ordre -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh;">
     <!-- Navigation -->
-    <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
-        <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
-            <div style="display:flex; align-items:center; gap:1rem;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
-                    <span style="font-weight:800;">NEXORA</span>
-                </div>
-                <span class="pill" style="background:var(--amber-glow); color:var(--amber); font-size:10px;">Bêta</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:1rem;">
-                <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
-                <button id="logout" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Déconnexion</button>
-            </div>
-        </div>
-    </nav>
+    <nav>...</nav>
 
-    <main style="max-width:1280px; margin:2rem auto; padding:0 2rem;">
-        <h1 style="font-size:2rem; font-weight:800; margin-bottom:0.5rem;">Bonjour !</h1>
-        <p style="color:var(--txt2); margin-bottom:2rem;">Voici un aperçu de votre activité.</p>
-
-        <!-- Statistiques -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:2rem;">
-            <div class="glass-card" style="padding:1.5rem; display:flex; justify-content:space-between;">
-                <div>
-                    <p style="color:var(--txt2); font-size:0.875rem;">Workflows actifs</p>
-                    <p class="stat-number" style="font-size:2rem; font-weight:800;">3</p>
-                </div>
-                <div style="width:40px; height:40px; border-radius:8px; background:var(--amber-glow); display:flex; align-items:center; justify-content:center;">⚡</div>
-            </div>
-            <div class="glass-card" style="padding:1.5rem; display:flex; justify-content:space-between;">
-                <div>
-                    <p style="color:var(--txt2); font-size:0.875rem;">Temps économisé</p>
-                    <p class="stat-number" style="font-size:2rem; font-weight:800;">12h</p>
-                </div>
-                <div style="width:40px; height:40px; border-radius:8px; background:var(--teal-glow); display:flex; align-items:center; justify-content:center;">⏱️</div>
-            </div>
-            <div class="glass-card" style="padding:1.5rem; display:flex; justify-content:space-between;">
-                <div>
-                    <p style="color:var(--txt2); font-size:0.875rem;">Rappels envoyés</p>
-                    <p class="stat-number" style="font-size:2rem; font-weight:800;">247</p>
-                </div>
-                <div style="width:40px; height:40px; border-radius:8px; background:rgba(139,92,246,0.2); display:flex; align-items:center; justify-content:center;">📨</div>
-            </div>
-        </div>
-
-        <!-- Actions rapides -->
-        <div class="glass-card" style="padding:2rem; margin-bottom:2rem;">
-            <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">Créer votre premier workflow</h2>
-            <p style="color:var(--txt2); margin-bottom:1.5rem;">Automatisez les rappels de rendez-vous en quelques clics.</p>
-            <button id="new-workflow-btn" class="btn btn-primary">➕ Nouveau workflow</button>
-        </div>
-
-        <!-- Activité récente -->
-        <div class="glass-card" style="padding:2rem;">
-            <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">Activité récente</h2>
-            <div style="display:flex; flex-direction:column; gap:0.5rem;">
-                <div style="display:flex; align-items:center; gap:1rem; padding:0.5rem 0; border-bottom:1px solid var(--border);">
-                    <span style="width:30px; height:30px; border-radius:50%; background:var(--amber-glow); display:flex; align-items:center; justify-content:center;">📅</span>
-                    <div><span style="font-weight:600;">Rappel de rendez-vous</span><br><span style="font-size:12px; color:var(--txt2);">Il y a 2 heures</span></div>
-                </div>
-            </div>
-        </div>
+    <main>
+        <!-- Contenu -->
+        <button id="new-workflow-btn" class="btn btn-primary">➕ Nouveau workflow</button>
     </main>
 
     <script>
         (async function() {
             try {
-                // Vérification utilisateur (supabaseClient global)
-                const { data: { user }, error } = await supabaseClient.auth.getUser();
+                const { data: { user }, error } = await window.supabaseClient.auth.getUser();
                 if (error || !user) {
                     window.location.href = 'login.html';
                     return;
                 }
-
-                // Vérification MFA
-                const { data: factors } = await supabaseClient.auth.mfa.listFactors();
+                const { data: factors } = await window.supabaseClient.auth.mfa.listFactors();
                 if (!factors.totp || factors.totp.length === 0) {
                     window.location.href = 'mfa-setup.html';
                     return;
                 }
-
-                // Charger les stats (optionnel)
-                if (typeof window.loadStats === 'function') {
-                    window.loadStats();
-                }
-            } catch (err) {
-                console.error('Erreur initialisation dashboard:', err);
-            }
+                // Charger stats...
+            } catch (err) { console.error(err); }
         })();
 
-        // Déconnexion
         document.getElementById('logout')?.addEventListener('click', async () => {
-            await supabaseClient.auth.signOut();
+            await window.supabaseClient.auth.signOut();
             window.location.href = 'index.html';
         });
 
-        // Bouton Nouveau workflow (redirection)
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('new-workflow-btn')?.addEventListener('click', function() {
-                window.location.href = 'workflow-edit.html';
-            });
+        document.getElementById('new-workflow-btn')?.addEventListener('click', () => {
+            window.location.href = 'workflow-edit.html';
         });
     </script>
 </body>

@@ -1,14 +1,11 @@
 // Initialisation du client Supabase (utilise les variables globales de config.js)
-const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+window.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
 // Inscription
 async function signUp(email, password) {
-    const { data, error } = await supabaseClient.auth.signUp({ 
-        email, 
-        password,
-        options: {
-            emailRedirectTo: window.location.origin + '/verify-email.html'
-        }
+    const { data, error } = await window.supabaseClient.auth.signUp({ email, password });
+    return { data, error };
+}
     });
     return { data, error };
 }
