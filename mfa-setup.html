@@ -12,7 +12,6 @@
     <!-- Ordre des scripts : d'abord Supabase, puis config, puis auth -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
     <!-- Pas besoin de dashboard.js ici -->
 </head>
 <body style="background: var(--midnight); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem;">
@@ -56,6 +55,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let factorId = null;
+	
         let factorId = null;
 
         async function setupMFA() {
