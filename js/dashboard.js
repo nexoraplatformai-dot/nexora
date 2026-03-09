@@ -1,5 +1,5 @@
-// js/dashboard.js
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// js/dashboard.js corrigé
+// NE PAS redéclarer supabaseClient, il vient de auth.js
 
 async function checkAuth() {
     const { data: { user }, error } = await supabaseClient.auth.getUser();
@@ -16,15 +16,12 @@ async function checkAuth() {
 }
 
 async function loadStats() {
-    // ... inchangé
+    // Exemple de chargement de stats (à adapter)
+    document.querySelectorAll('.stat-number').forEach((el, index) => {
+        if (index === 0) el.textContent = '3';
+        if (index === 1) el.textContent = '12h';
+        if (index === 2) el.textContent = '247';
+    });
 }
 
-document.getElementById('logout')?.addEventListener('click', async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = 'index.html';
-});
-
-(async () => {
-    const user = await checkAuth();
-    if (user) loadStats();
-})();
+// Pas de code auto-exécuté ici (tout sera géré depuis la page HTML)
