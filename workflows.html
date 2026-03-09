@@ -51,7 +51,7 @@
         </div>
     </main>
 
-    <!-- Modal de création/édition (optionnel) -->
+    <!-- Modal de création/édition (optionnel, peut rester mais pas utilisé) -->
     <div id="workflow-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:1000; align-items:center; justify-content:center;">
         <div class="glass-card" style="max-width:500px; width:90%; padding:2rem; position:relative;">
             <button id="close-modal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--txt2); font-size:1.5rem; cursor:pointer;">&times;</button>
@@ -85,12 +85,12 @@
 
     <script>
         (async function() {
-            // Attendre que le DOM soit prêt (bien que les scripts soient placés avant, c'est une sécurité)
+            // Attendre le chargement du DOM
             if (document.readyState === 'loading') {
                 await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
             }
 
-            // Vérifier que les fonctions nécessaires sont disponibles
+            // Vérifier les fonctions nécessaires
             if (typeof getWorkflows !== 'function') {
                 console.error('getWorkflows n\'est pas défini. Vérifiez que workflows.js est chargé.');
                 alert('Erreur critique : les fonctions de workflow ne sont pas disponibles. Rechargez la page.');
@@ -112,32 +112,24 @@
             // Charger et afficher les workflows
             await loadWorkflows();
 
-            // Gestionnaire pour créer un workflow (redirection directe vers workflow-edit.html)
-            const newBtn = document.getElementById('new-workflow');
-            if (newBtn) {
-                newBtn.addEventListener('click', (e) => {
-                    // Le lien fait déjà la redirection, mais on peut empêcher si besoin
-                });
-            }
-
-            // Gestionnaires pour le modal (si utilisé)
-            const modal = document.getElementById('workflow-modal');
-            const closeBtn = document.getElementById('close-modal');
-            const openModalBtn = document.getElementById('new-workflow-modal'); // si vous avez un bouton dédié
-
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    modal.style.display = 'none';
-                });
-            }
-
-            window.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                }
+            // Gestionnaire pour créer un workflow (redirection directe)
+            document.getElementById('new-workflow')?.addEventListener('click', (e) => {
+                // Le lien fait déjà la redirection
             });
 
-            // Fonction pour charger les workflows (définie localement)
+            // Fermeture du modal si affiché (optionnel)
+            const closeBtn = document.getElementById('close-modal');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    document.getElementById('workflow-modal').style.display = 'none';
+                });
+            }
+            window.addEventListener('click', (e) => {
+                const modal = document.getElementById('workflow-modal');
+                if (e.target === modal) modal.style.display = 'none';
+            });
+
+            // Fonction pour charger les workflows
             async function loadWorkflows() {
                 const container = document.getElementById('workflows-list');
                 container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">Chargement...</div>';
@@ -162,15 +154,25 @@
                         const card = document.createElement('div');
                         card.className = 'glass-card';
                         card.style.padding = '1.5rem';
-                        const date = new Date(w.created_at).toLocaleDateString();
+                        const createdDate = new Date(w.created_at).toLocaleDateString();
+
+                        // Préparer la coche si dernière exécution existe
+                        let lastExecutedHtml = '';
+                        if (w.last_executed) {
+                            const lastDate = new Date(w.last_executed).toLocaleString();
+                            lastExecutedHtml = `<span style="color:var(--teal); margin-left:0.5rem;" title="Dernière exécution : ${lastDate}">✅</span>`;
+                        }
+
                         card.innerHTML = `
                             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                                 <div>
-                                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.25rem;">${w.name}</h3>
+                                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.25rem;">
+                                        ${w.name} ${lastExecutedHtml}
+                                    </h3>
                                     <p style="font-size:0.8rem; color:var(--amber); text-transform:uppercase;">${w.type}</p>
                                 </div>
                                 <div class="pill" style="background:${w.type==='rappel_rdv'?'var(--amber-glow)':'var(--teal-glow)'}">
-                                    ${date}
+                                    ${createdDate}
                                 </div>
                             </div>
                             <div style="margin:1rem 0; font-size:0.9rem; color:var(--txt2);">
@@ -185,7 +187,7 @@
                         container.appendChild(card);
                     });
 
-                    // Ajouter les écouteurs
+                    // Ajouter les écouteurs pour les boutons
                     document.querySelectorAll('.btn-edit').forEach(btn => {
                         btn.addEventListener('click', async (e) => {
                             const id = e.target.dataset.id;
@@ -199,7 +201,7 @@
                             if (confirm('Supprimer ce workflow ?')) {
                                 const { error } = await deleteWorkflow(id);
                                 if (error) alert('Erreur : ' + error);
-                                else await loadWorkflows();
+                                else await loadWorkflows(); // Recharger la liste
                             }
                         });
                     });
@@ -212,6 +214,7 @@
                                 alert('Erreur : ' + result.error);
                             } else {
                                 alert('Workflow exécuté avec succès !');
+                                await loadWorkflows(); // Recharger pour mettre à jour la coche
                             }
                         });
                     });

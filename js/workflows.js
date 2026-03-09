@@ -1,6 +1,5 @@
 // js/workflows.js
 // Dépend de config.js et auth.js (window.supabaseClient doit être défini)
-// Toutes les fonctions nécessaires à la gestion des workflows sont ici.
 
 // Créer un workflow
 async function createWorkflow(workflowData) {
@@ -16,17 +15,39 @@ async function createWorkflow(workflowData) {
     }
 }
 
-// Récupérer tous les workflows de l'utilisateur connecté
+// Récupérer tous les workflows de l'utilisateur connecté, avec la dernière exécution
 async function getWorkflows() {
     try {
         const { data: { user } } = await window.supabaseClient.auth.getUser();
         if (!user) return { data: null, error: 'Non authentifié' };
-        const { data, error } = await window.supabaseClient
+        
+        // Récupérer les workflows
+        const { data: workflows, error } = await window.supabaseClient
             .from('workflows')
             .select('*')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });
-        return { data, error };
+        if (error) throw error;
+
+        // Pour chaque workflow, récupérer le dernier log d'exécution
+        const workflowsWithLogs = await Promise.all(workflows.map(async (w) => {
+            try {
+                const { data: logs, error: logError } = await window.supabaseClient
+                    .from('workflow_logs')
+                    .select('executed_at')
+                    .eq('workflow_id', w.id)
+                    .eq('status', 'success')
+                    .order('executed_at', { ascending: false })
+                    .limit(1);
+                if (logError) throw logError;
+                const lastExecuted = logs && logs.length > 0 ? logs[0].executed_at : null;
+                return { ...w, last_executed: lastExecuted };
+            } catch (logErr) {
+                console.warn('Erreur lors de la récupération du log pour le workflow', w.id, logErr);
+                return { ...w, last_executed: null };
+            }
+        }));
+        return { data: workflowsWithLogs, error: null };
     } catch (err) {
         console.error('getWorkflows error:', err);
         return { data: null, error: err.message };
@@ -67,34 +88,19 @@ async function executeWorkflow(workflowId) {
     try {
         const response = await fetch('/api/execute-workflow', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ workflowId })
         });
-
-        let data;
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-        } else {
-            const text = await response.text();
-            data = { error: text };
-        }
-
-        if (!response.ok) {
-            throw new Error(data.error || `Erreur HTTP ${response.status}`);
-        }
-
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `Erreur HTTP ${response.status}`);
         return { data, error: null };
     } catch (err) {
         console.error('executeWorkflow error:', err);
-        const errorMessage = err.message || String(err) || 'Erreur inconnue';
-        return { data: null, error: errorMessage };
+        return { data: null, error: err.message };
     }
 }
 
-// Types de workflows prédéfinis (optionnel)
+// Types de workflows prédéfinis
 const WORKFLOW_TYPES = {
     RAPPEL_RDV: 'rappel_rdv',
     QUALIFICATION_LEAD: 'qualification_lead',
