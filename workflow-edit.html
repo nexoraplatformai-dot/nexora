@@ -126,10 +126,15 @@
             const workflowId = urlParams.get('id');
 
             // Vérifier connexion Google (simulée)
-            // À remplacer par un appel API réel
-            document.getElementById('connect-google').addEventListener('click', () => {
-                window.location.href = '/api/auth-google';
-            });
+document.getElementById('connect-google').addEventListener('click', async () => {
+  const { user } = await getCurrentUser();
+  if (!user) {
+    alert('Vous devez être connecté.');
+    return;
+  }
+  const state = btoa(JSON.stringify({ userId: user.id }));
+  window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
+});
 
             // Si édition, charger les données (à implémenter)
             if (workflowId) {
