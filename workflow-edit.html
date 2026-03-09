@@ -133,6 +133,7 @@ document.getElementById('connect-google').addEventListener('click', async () => 
     return;
   }
   const state = btoa(JSON.stringify({ userId: user.id }));
+  // Rediriger vers l'API avec le state
   window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
 });
 
