@@ -43,49 +43,48 @@
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
 
-    <script>
-        // supabaseClient est global, défini dans auth.js
-        let factors = [];
+<script>
+    let factors = [];
 
-        async function getFactors() {
-            try {
-                const { data, error } = await window.supabaseClient.auth.mfa.listFactors();
-                if (error) throw error;
-                factors = data.totp;
-                if (factors.length === 0) {
-                    alert('Aucun facteur MFA trouvé. Redirection vers configuration.');
-                    window.location.href = 'mfa-setup.html';
-                }
-            } catch (err) {
-                console.error('Erreur getFactors:', err);
-                alert('Erreur : ' + err.message);
+    async function getFactors() {
+        try {
+            const { data, error } = await window.supabaseClient.auth.mfa.listFactors();
+            if (error) throw error;
+            factors = data.totp;
+            if (factors.length === 0) {
+                alert('Aucun facteur MFA trouvé. Redirection vers configuration.');
+                window.location.href = 'mfa-setup.html';
             }
+        } catch (err) {
+            console.error('Erreur getFactors:', err);
+            alert('Erreur : ' + err.message);
         }
-        getFactors();
+    }
+    getFactors();
 
-        document.getElementById('verify-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const code = document.getElementById('code').value;
+    document.getElementById('verify-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('code').value;
 
-            if (factors.length === 0) return;
-            const factorId = factors[0].id;
+        if (factors.length === 0) return;
+        const factorId = factors[0].id;
 
-            try {
-                const { data: challengeData, error: challengeError } = await window.supabaseClient.auth.mfa.challenge({ factorId });
-                if (challengeError) throw challengeError;
+        try {
+            const { data: challengeData, error: challengeError } = await window.supabaseClient.auth.mfa.challenge({ factorId });
+            if (challengeError) throw challengeError;
 
-                const { error: verifyError } = await window.supabaseClient.auth.mfa.verify({
-                    factorId,
-                    challengeId: challengeData.id,
-                    code
-                });
-                if (verifyError) throw verifyError;
+            const { error: verifyError } = await window.supabaseClient.auth.mfa.verify({
+                factorId,
+                challengeId: challengeData.id,
+                code
+            });
+            if (verifyError) throw verifyError;
 
-                window.location.href = 'dashboard.html';
-            } catch (err) {
-                alert('Code invalide : ' + err.message);
-            }
-        });
-    </script>
+            window.location.href = 'dashboard.html';
+        } catch (err) {
+            alert('Code invalide : ' + err.message);
+        }
+    });
+</script>
 </body>
 </html>

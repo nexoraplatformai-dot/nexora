@@ -66,44 +66,35 @@
     </div>
 
 <script>
-    // supabaseClient est déjà défini dans auth.js, pas besoin de le recréer
-    let factors = [];
-
-    async function getFactors() {
+    (async function() {
         try {
-            const { data, error } = await supabaseClient.auth.mfa.listFactors();
+            const { user } = await getCurrentUser();
+            if (user) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+        } catch (e) { /* ignore */ }
+    })();
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const { data, error } = await signIn(email, password);
             if (error) throw error;
-            factors = data.totp;
-            if (factors.length === 0) {
-                alert('Aucun facteur MFA trouvé. Redirection vers configuration.');
+
+            const factors = await listFactors();
+            const hasMfa = factors.data?.totp?.length > 0;
+            if (!hasMfa) {
+                alert('Vous devez configurer l\'authentification à deux facteurs.');
                 window.location.href = 'mfa-setup.html';
+            } else {
+                window.location.href = 'mfa-verify.html';
             }
         } catch (err) {
-            console.error('Erreur getFactors:', err);
-            alert('Erreur lors de la récupération des facteurs MFA : ' + err.message);
-        }
-    }
-    getFactors();
-
-    document.getElementById('verify-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = document.getElementById('code').value;
-        if (factors.length === 0) return;
-        const factorId = factors[0].id;
-        try {
-            const { data: challengeData, error: challengeError } = await supabaseClient.auth.mfa.challenge({ factorId });
-            if (challengeError) throw challengeError;
-
-            const { error: verifyError } = await supabaseClient.auth.mfa.verify({
-                factorId,
-                challengeId: challengeData.id,
-                code
-            });
-            if (verifyError) throw verifyError;
-
-            window.location.href = 'dashboard.html';
-        } catch (err) {
-            alert('Code invalide : ' + err.message);
+            alert('Erreur : ' + err.message);
         }
     });
 </script>
