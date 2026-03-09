@@ -8,14 +8,14 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Scripts dans l'ordre -->
+    <!-- Ordre des scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/workflows.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh;">
-    <!-- Navigation identique au dashboard -->
+    <!-- Navigation -->
     <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
         <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
             <div style="display:flex; align-items:center; gap:1rem;">
@@ -51,7 +51,7 @@
                         <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de visites immobilières">
                     </div>
 
-                    <!-- Connexion Google (état) -->
+                    <!-- Connexion Google -->
                     <div class="form-group">
                         <label class="form-label">Agenda Google</label>
                         <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
@@ -60,14 +60,14 @@
                         </div>
                     </div>
 
-                    <!-- Mots-clés pour filtrer les événements -->
+                    <!-- Mots-clés -->
                     <div class="form-group">
                         <label class="form-label">Mots-clés (séparés par des virgules)</label>
                         <input type="text" id="keywords" class="form-input" placeholder="ex: visite, rendez-vous, audience" value="visite,rendez-vous">
                         <p style="font-size:12px; color:var(--txt2); margin-top:0.25rem;">Seuls les événements contenant ces mots seront pris en compte.</p>
                     </div>
 
-                    <!-- Canaux de rappel -->
+                    <!-- Canaux -->
                     <div class="form-group">
                         <label class="form-label">Canaux de rappel</label>
                         <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
@@ -80,7 +80,7 @@
                         </div>
                     </div>
 
-                    <!-- Messages personnalisables -->
+                    <!-- Messages -->
                     <div class="form-group">
                         <label class="form-label">Message pour J-1 (SMS)</label>
                         <textarea id="message-j1-sms" class="form-input" rows="2">Bonjour {prenom}, rappel de votre rendez-vous demain à {heure}. Merci de confirmer par Oui ou Non.</textarea>
@@ -94,13 +94,13 @@
                         <textarea id="message-h2-sms" class="form-input" rows="2">Votre rendez-vous est dans 2 heures. À tout de suite !</textarea>
                     </div>
 
-                    <!-- Variables disponibles -->
+                    <!-- Variables -->
                     <div style="background:var(--surface); border-radius:8px; padding:1rem; margin-bottom:1.5rem;">
                         <p style="font-size:12px; font-weight:700; margin-bottom:0.5rem;">Variables disponibles :</p>
                         <code style="color:var(--amber);">{prenom}, {nom}, {date}, {heure}, {lieu}</code>
                     </div>
 
-                    <!-- Activer immédiatement -->
+                    <!-- Activer -->
                     <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
                         <input type="checkbox" id="active" checked>
                         <label for="active">Activer le workflow immédiatement</label>
@@ -114,7 +114,7 @@
                 </form>
             </div>
 
-            <!-- Aide / raccourcis -->
+            <!-- Aide -->
             <div style="display:flex; flex-direction:column; gap:1rem;">
                 <div class="glass-card" style="padding:1.5rem;">
                     <h3 style="font-size:14px; font-weight:700; margin-bottom:0.5rem;">🔔 Fonctionnement</h3>
@@ -146,24 +146,15 @@
                 return;
             }
 
-            // Vérifier si on est en mode édition (présence d'un ID dans l'URL)
+            // Récupérer l'ID depuis l'URL (pour édition)
             const urlParams = new URLSearchParams(window.location.search);
             const workflowId = urlParams.get('id');
 
-            // État de connexion Google
+            // Vérifier si l'utilisateur a déjà connecté Google
             async function checkGoogleConnection() {
-                // Appel à une API pour vérifier si l'utilisateur a des tokens Google
-                // (à implémenter côté serveur) – pour l'instant on simule
-                const hasGoogle = false; // À remplacer par une vraie vérification
-                const statusEl = document.getElementById('google-status');
-                if (hasGoogle) {
-                    statusEl.innerHTML = '✅ Connecté';
-                    statusEl.style.color = 'var(--teal)';
-                } else {
-                    statusEl.innerHTML = '❌ Non connecté';
-                    statusEl.style.color = 'var(--txt2)';
-                }
-                return hasGoogle;
+                // Appel à une API pour vérifier (à implémenter)
+                // Par défaut, on affiche "Non connecté"
+                document.getElementById('google-status').innerHTML = '❌ Non connecté';
             }
             await checkGoogleConnection();
 
@@ -174,19 +165,29 @@
 
             // Si workflowId présent, charger les données existantes
             if (workflowId) {
-                // À implémenter avec getWorkflows() et filtrer par id
-                // Pour l'exemple, on pré-remplit avec des valeurs fictives
-                document.getElementById('workflow-name').value = 'Rappels visites';
-                document.getElementById('keywords').value = 'visite,rendez-vous';
-                document.getElementById('message-j1-sms').value = 'Bonjour {prenom}, rappel demain à {heure}. Confirmez par Oui.';
-                // etc.
+                try {
+                    const { data: workflows, error } = await getWorkflows();
+                    if (error) throw error;
+                    const workflow = workflows.find(w => w.id === workflowId);
+                    if (workflow) {
+                        document.getElementById('workflow-name').value = workflow.name;
+                        document.getElementById('keywords').value = workflow.config.keywords.join(', ');
+                        document.getElementById('channel-sms').checked = workflow.config.channels.includes('sms');
+                        document.getElementById('channel-email').checked = workflow.config.channels.includes('email');
+                        document.getElementById('message-j1-sms').value = workflow.config.messages.j1.sms;
+                        document.getElementById('message-j1-email').value = workflow.config.messages.j1.email;
+                        document.getElementById('message-h2-sms').value = workflow.config.messages.h2.sms;
+                        document.getElementById('active').checked = workflow.active;
+                    }
+                } catch (err) {
+                    alert('Erreur lors du chargement du workflow : ' + err.message);
+                }
             }
 
             // Soumission du formulaire
             document.getElementById('workflow-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                // Récupérer les valeurs
                 const name = document.getElementById('workflow-name').value;
                 const keywords = document.getElementById('keywords').value.split(',').map(k => k.trim());
                 const channels = [];

@@ -64,18 +64,45 @@
 
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
-	<script>
-    document.getElementById('signup-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+<script>
+    // supabaseClient est déjà défini dans auth.js, pas besoin de le recréer
+    let factors = [];
+
+    async function getFactors() {
         try {
-            const { data, error } = await signUp(email, password);
+            const { data, error } = await supabaseClient.auth.mfa.listFactors();
             if (error) throw error;
-            alert('Inscription réussie ! Veuillez configurer l\'authentification à deux facteurs.');
-            window.location.href = 'mfa-setup.html';
+            factors = data.totp;
+            if (factors.length === 0) {
+                alert('Aucun facteur MFA trouvé. Redirection vers configuration.');
+                window.location.href = 'mfa-setup.html';
+            }
         } catch (err) {
-            alert('Erreur : ' + err.message);
+            console.error('Erreur getFactors:', err);
+            alert('Erreur lors de la récupération des facteurs MFA : ' + err.message);
+        }
+    }
+    getFactors();
+
+    document.getElementById('verify-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('code').value;
+        if (factors.length === 0) return;
+        const factorId = factors[0].id;
+        try {
+            const { data: challengeData, error: challengeError } = await supabaseClient.auth.mfa.challenge({ factorId });
+            if (challengeError) throw challengeError;
+
+            const { error: verifyError } = await supabaseClient.auth.mfa.verify({
+                factorId,
+                challengeId: challengeData.id,
+                code
+            });
+            if (verifyError) throw verifyError;
+
+            window.location.href = 'dashboard.html';
+        } catch (err) {
+            alert('Code invalide : ' + err.message);
         }
     });
 </script>
