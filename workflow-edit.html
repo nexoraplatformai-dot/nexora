@@ -29,167 +29,209 @@
         </div>
     </nav>
 
-    <main style="max-width:800px; margin:2rem auto; padding:0 2rem;">
-        <div style="margin-bottom:2rem;">
-            <a href="workflows.html" style="color:var(--amber); display:inline-flex; align-items:center; gap:0.5rem;">← Retour aux workflows</a>
-            <h1 style="margin-top:1rem;">Configurer un workflow de rappels</h1>
-            <p style="color:var(--txt2);">Automatisez les rappels de rendez-vous depuis votre agenda Google.</p>
-        </div>
+   <main style="max-width:800px; margin:2rem auto; padding:0 2rem;">
+    <div style="margin-bottom:2rem;">
+        <a href="workflows.html" style="color:var(--amber); display:inline-flex; align-items:center; gap:0.5rem;">← Retour aux workflows</a>
+        <h1 style="margin-top:1rem;">Configurer un workflow</h1>
+        <p style="color:var(--txt2);">Choisissez votre secteur et un template pour commencer, puis personnalisez.</p>
+    </div>
 
-        <div class="glass-card" style="padding:2rem;">
-            <form id="workflow-form">
-                <!-- Nom -->
-                <div class="form-group">
-                    <label class="form-label">Nom du workflow</label>
-                    <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de visites immobilières">
-                </div>
+    <div class="glass-card" style="padding:2rem;">
+        <form id="workflow-form">
+            <!-- Sélecteur de secteur -->
+            <div class="form-group">
+                <label class="form-label">Secteur d'activité</label>
+                <select id="workflow-sector" class="form-input" required>
+                    <option value="">Choisissez votre secteur</option>
+                    <option value="immobilier">Immobilier</option>
+                    <option value="juridique">Juridique (Avocats / Huissiers)</option>
+                    <option value="business">Business Developer</option>
+                    <option value="tpe">TPE / PME</option>
+                </select>
+            </div>
 
-                <!-- Connexion Google avec indicateur d'état -->
-                <div class="form-group">
-                    <label class="form-label">Agenda Google</label>
-                    <div style="display:flex; align-items:center; gap:1rem;">
-                        <span id="google-status" style="color:var(--txt2);">Non connecté</span>
-                        <button type="button" id="connect-google" class="btn btn-secondary">Connecter mon agenda</button>
-                    </div>
-                </div>
+            <!-- Sélecteur de template (dynamique) -->
+            <div class="form-group">
+                <label class="form-label">Template prédéfini</label>
+                <select id="workflow-template" class="form-input">
+                    <option value="">Choisissez d'abord un secteur</option>
+                </select>
+                <p class="form-help">Sélectionnez un template pour pré-remplir la configuration.</p>
+            </div>
 
-                <!-- Mots-clés -->
-                <div class="form-group">
-                    <label class="form-label">Mots-clés (séparés par des virgules)</label>
-                    <input type="text" id="keywords" class="form-input" placeholder="ex: visite, rendez-vous, audience" value="visite,rendez-vous">
-                    <p class="form-help">Seuls les événements contenant ces mots seront pris en compte.</p>
-                </div>
+            <!-- Nom du workflow -->
+            <div class="form-group">
+                <label class="form-label">Nom du workflow</label>
+                <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de visites immobilières">
+            </div>
 
-                <!-- Canaux de rappel -->
-                <div class="form-group">
-                    <label class="form-label">Canaux de rappel</label>
-                    <div style="display:flex; gap:1.5rem;">
-                        <label><input type="checkbox" id="channel-sms" value="sms" checked> SMS</label>
-                        <label><input type="checkbox" id="channel-email" value="email" checked> Email</label>
-                    </div>
-                </div>
+            <!-- ... le reste du formulaire inchangé ... -->
+        </form>
+    </div>
+</main>
 
-                <!-- Messages J-1 SMS -->
-                <div class="form-group">
-                    <label class="form-label">Message pour J-1 (SMS)</label>
-                    <textarea id="message-j1-sms" class="form-input" rows="2">Bonjour {prenom}, rappel de votre rendez-vous demain à {heure}. Merci de confirmer par Oui ou Non.</textarea>
-                </div>
+  <script>
+    function showNotification(message, type = 'success') {
+        const container = document.getElementById('notification-container');
+        const notif = document.createElement('div');
+        notif.className = `notification ${type}`;
+        notif.textContent = message;
+        container.appendChild(notif);
+        setTimeout(() => notif.remove(), 3000);
+    }
 
-                <!-- Messages J-1 Email -->
-                <div class="form-group">
-                    <label class="form-label">Message pour J-1 (Email)</label>
-                    <textarea id="message-j1-email" class="form-input" rows="2">Bonjour {prenom},&lt;br&gt;Ceci est un rappel pour votre rendez-vous du {date} à {heure}. Veuillez confirmer votre présence.</textarea>
-                </div>
+    (async function() {
+        // Vérification utilisateur et MFA
+        const { user, error } = await getCurrentUser();
+        if (error || !user) {
+            window.location.href = 'login.html';
+            return;
+        }
+        const factors = await listFactors();
+        if (!factors.data?.totp?.length) {
+            window.location.href = 'mfa-setup.html';
+            return;
+        }
 
-                <!-- Messages H-2 SMS -->
-                <div class="form-group">
-                    <label class="form-label">Message pour H-2 (SMS)</label>
-                    <textarea id="message-h2-sms" class="form-input" rows="2">Votre rendez-vous est dans 2 heures. À tout de suite !</textarea>
-                </div>
+        // Références aux éléments
+        const sectorSelect = document.getElementById('workflow-sector');
+        const templateSelect = document.getElementById('workflow-template');
+        const workflowTypeInput = document.getElementById('workflow-type');
 
-                <!-- Variables disponibles -->
-                <div class="form-help" style="background:var(--surface); padding:1rem; border-radius:8px; margin-bottom:1rem;">
-                    <p><strong>Variables disponibles :</strong> {prenom}, {nom}, {date}, {heure}, {lieu}</p>
-                </div>
-
-                <!-- Activer immédiatement -->
-                <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
-                    <input type="checkbox" id="active" checked>
-                    <label for="active">Activer le workflow immédiatement</label>
-                </div>
-
-                <!-- Boutons -->
-                <div style="display:flex; gap:1rem; margin-top:2rem;">
-                    <button type="submit" class="btn btn-primary">Enregistrer</button>
-                    <a href="workflows.html" class="btn btn-secondary">Annuler</a>
-                </div>
-            </form>
-        </div>
-    </main>
-
-    <script>
-	function showNotification(message, type = 'success') {
-    const container = document.getElementById('notification-container');
-    const notif = document.createElement('div');
-    notif.className = `notification ${type}`;
-    notif.textContent = message;
-    container.appendChild(notif);
-    setTimeout(() => notif.remove(), 3000);
-}
-        (async function() {
-            // Vérification utilisateur et MFA
-            const { user, error } = await getCurrentUser();
-            if (error || !user) {
-                window.location.href = 'login.html';
+        // --- Chargement des templates selon secteur ---
+        async function loadTemplates(sector) {
+            if (!sector) {
+                templateSelect.innerHTML = '<option value="">Sélectionnez d’abord un secteur</option>';
                 return;
             }
-            const factors = await listFactors();
-            if (!factors.data?.totp?.length) {
-                window.location.href = 'mfa-setup.html';
-                return;
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('workflow_templates')
+                    .select('id, name, description, config, type')
+                    .eq('sector', sector);
+                if (error) throw error;
+                templateSelect.innerHTML = '<option value="">Choisissez un template</option>';
+                data.forEach(t => {
+                    // On stocke la config et le type dans des attributs data
+                    templateSelect.innerHTML += `<option value="${t.id}" data-config='${JSON.stringify(t.config).replace(/'/g, "&#39;")}' data-type="${t.type}">${t.name}</option>`;
+                });
+            } catch (err) {
+                console.error('Erreur chargement templates:', err);
+                showNotification('Erreur chargement templates', 'error');
             }
+        }
 
-            // Vérifier l'état de connexion Google
-            async function checkGoogleConnection() {
-                try {
-                    const { data, error } = await window.supabaseClient
-                        .from('user_tokens')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .eq('provider', 'google')
-                        .maybeSingle(); // retourne null si aucun résultat
+        sectorSelect.addEventListener('change', (e) => {
+            loadTemplates(e.target.value);
+        });
 
-                    if (error) throw error;
-                    const statusEl = document.getElementById('google-status');
-                    if (data) {
-                        statusEl.innerHTML = '✅ Connecté';
-                        statusEl.style.color = 'var(--teal)';
-                    } else {
-                        statusEl.innerHTML = '❌ Non connecté';
-                        statusEl.style.color = 'var(--txt2)';
+        // --- Pré-remplissage du formulaire lors du choix d'un template ---
+        templateSelect.addEventListener('change', (e) => {
+            const selected = e.target.selectedOptions[0];
+            if (!selected || !selected.value) return;
+            const config = JSON.parse(selected.dataset.config);
+            const type = selected.dataset.type;
+
+            // Mettre à jour le type caché
+            workflowTypeInput.value = type;
+
+            // Réinitialiser les champs (optionnel)
+            // On pré-remplit selon le type
+            if (type === 'rappel_rdv') {
+                if (config.keywords) {
+                    document.getElementById('keywords').value = config.keywords.join(', ');
+                }
+                if (config.channels) {
+                    document.getElementById('channel-sms').checked = config.channels.includes('sms');
+                    document.getElementById('channel-email').checked = config.channels.includes('email');
+                }
+                if (config.messages) {
+                    if (config.messages.j1?.sms) {
+                        document.getElementById('message-j1-sms').value = config.messages.j1.sms;
                     }
-                } catch (err) {
-                    console.error('Erreur vérification Google:', err);
-                    document.getElementById('google-status').innerHTML = '❌ Erreur';
+                    if (config.messages.j1?.email) {
+                        document.getElementById('message-j1-email').value = config.messages.j1.email;
+                    }
+                    if (config.messages.h2?.sms) {
+                        document.getElementById('message-h2-sms').value = config.messages.h2.sms;
+                    }
                 }
             }
+            // Ajouter d'autres types ici (qualification_lead, etc.)
+        });
+
+        // --- Vérification connexion Google ---
+        async function checkGoogleConnection() {
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('user_tokens')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('provider', 'google')
+                    .maybeSingle();
+
+                if (error) throw error;
+                const statusEl = document.getElementById('google-status');
+                if (data) {
+                    statusEl.innerHTML = '✅ Connecté';
+                    statusEl.style.color = 'var(--teal)';
+                } else {
+                    statusEl.innerHTML = '❌ Non connecté';
+                    statusEl.style.color = 'var(--txt2)';
+                }
+            } catch (err) {
+                console.error('Erreur vérification Google:', err);
+                document.getElementById('google-status').innerHTML = '❌ Erreur';
+            }
+        }
+        await checkGoogleConnection();
+
+        // --- Gestion du retour OAuth Google ---
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === 'google_connected') {
+            showNotification('Connexion Google réussie !', 'success');
             await checkGoogleConnection();
+        }
+        if (urlParams.get('error') === 'invalid_grant') {
+            showNotification('Erreur lors de la connexion Google. Veuillez réessayer.', 'error');
+        }
 
-            // Si retour de Google avec succès, on peut rafraîchir le statut
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('success') === 'google_connected') {
-                // On pourrait afficher un message temporaire
-                console.log('Connexion Google réussie !');
-                await checkGoogleConnection(); // re-vérifier immédiatement
+        // --- Bouton de connexion Google ---
+        document.getElementById('connect-google').addEventListener('click', async () => {
+            const { user } = await getCurrentUser();
+            if (!user) {
+                showNotification('Vous devez être connecté.', 'error');
+                return;
             }
-            if (urlParams.get('error') === 'invalid_grant') {
-                alert('Erreur lors de la connexion Google. Veuillez réessayer.');
+            const state = btoa(JSON.stringify({ userId: user.id }));
+            window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
+        });
+
+        // --- Si édition d'un workflow existant ---
+        const workflowId = urlParams.get('id');
+        if (workflowId) {
+            // À implémenter : charger le workflow et pré-remplir les champs
+            // (cela nécessite de récupérer le workflow et de remplir le secteur, template, etc.)
+            // Pour l'instant, on ignore.
+        }
+
+        // --- Soumission du formulaire ---
+        document.getElementById('workflow-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('workflow-name').value;
+            const sector = sectorSelect.value;
+            const templateId = templateSelect.value;
+            const type = workflowTypeInput.value;
+
+            if (!sector) {
+                showNotification('Veuillez sélectionner un secteur', 'error');
+                return;
             }
 
-            // Bouton de connexion Google
-            document.getElementById('connect-google').addEventListener('click', async () => {
-                const { user } = await getCurrentUser();
-                if (!user) {
-                    alert('Vous devez être connecté.');
-                    return;
-                }
-                const state = btoa(JSON.stringify({ userId: user.id }));
-                window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
-            });
-
-            // Récupérer l'ID du workflow si édition
-            const workflowId = urlParams.get('id');
-
-            // Si édition, charger les données (à implémenter)
-            if (workflowId) {
-                // À faire : charger workflow via getWorkflows et pré-remplir
-            }
-
-            // Soumission du formulaire
-            document.getElementById('workflow-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-
-                const name = document.getElementById('workflow-name').value;
+            // Construction de la config selon le type
+            let config = {};
+            if (type === 'rappel_rdv') {
                 const keywords = document.getElementById('keywords').value.split(',').map(k => k.trim());
                 const channels = [];
                 if (document.getElementById('channel-sms').checked) channels.push('sms');
@@ -197,9 +239,8 @@
                 const messageJ1Sms = document.getElementById('message-j1-sms').value;
                 const messageJ1Email = document.getElementById('message-j1-email').value;
                 const messageH2Sms = document.getElementById('message-h2-sms').value;
-                const active = document.getElementById('active').checked;
 
-                const config = {
+                config = {
                     keywords,
                     channels,
                     messages: {
@@ -207,33 +248,46 @@
                         h2: { sms: messageH2Sms }
                     }
                 };
+            }
+            // Ajouter d'autres types de workflows ici
 
-                try {
-                    let result;
-                    if (workflowId) {
-                        result = await updateWorkflow(workflowId, { name, type: 'rappel_rdv', config, active });
-                    } else {
-                        result = await createWorkflow({
-                            user_id: user.id,
-                            name,
-                            type: 'rappel_rdv',
-                            config,
-                            active
-                        });
-                    }
-                    if (result.error) throw result.error;
-                    alert('Workflow enregistré avec succès !');
-                    window.location.href = 'workflows.html';
-                } catch (err) {
-                    alert('Erreur : ' + err.message);
+            const active = document.getElementById('active').checked;
+
+            try {
+                let result;
+                if (workflowId) {
+                    result = await updateWorkflow(workflowId, {
+                        name,
+                        type,
+                        sector,
+                        template_id: templateId || null,
+                        config,
+                        active
+                    });
+                } else {
+                    result = await createWorkflow({
+                        user_id: user.id,
+                        name,
+                        type,
+                        sector,
+                        template_id: templateId || null,
+                        config,
+                        active
+                    });
                 }
-            });
+                if (result.error) throw result.error;
+                showNotification('Workflow enregistré avec succès !', 'success');
+                setTimeout(() => window.location.href = 'workflows.html', 1500);
+            } catch (err) {
+                showNotification('Erreur : ' + err.message, 'error');
+            }
+        });
 
-            // Déconnexion
-            document.getElementById('logout').addEventListener('click', async () => {
-                await signOut();
-            });
-        })();
-    </script>
+        // --- Déconnexion ---
+        document.getElementById('logout').addEventListener('click', async () => {
+            await signOut();
+        });
+    })();
+</script>
 </body>
 </html>
