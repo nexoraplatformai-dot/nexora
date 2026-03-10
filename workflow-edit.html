@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Scripts dans l'ordre -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
@@ -23,271 +22,1016 @@
                 <span style="font-weight:800;">NEXORA</span>
             </a>
             <div style="display:flex; align-items:center; gap:1rem;">
+                <a href="dashboard.html" style="color:var(--txt2);">Accueil</a>
                 <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
                 <button id="logout" class="btn btn-secondary" style="padding:6px 12px;">Déconnexion</button>
             </div>
         </div>
     </nav>
 
-   <main style="max-width:800px; margin:2rem auto; padding:0 2rem;">
-    <div style="margin-bottom:2rem;">
-        <a href="workflows.html" style="color:var(--amber); display:inline-flex; align-items:center; gap:0.5rem;">← Retour aux workflows</a>
-        <h1 style="margin-top:1rem;">Configurer un workflow</h1>
-        <p style="color:var(--txt2);">Choisissez votre secteur et un template pour commencer, puis personnalisez.</p>
-    </div>
+    <!-- Conteneur notifications -->
+    <div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
 
-    <div class="glass-card" style="padding:2rem;">
-        <form id="workflow-form">
-            <!-- Sélecteur de secteur -->
-            <div class="form-group">
-                <label class="form-label">Secteur d'activité</label>
-                <select id="workflow-sector" class="form-input" required>
-                    <option value="">Choisissez votre secteur</option>
-                    <option value="immobilier">Immobilier</option>
-                    <option value="juridique">Juridique (Avocats / Huissiers)</option>
-                    <option value="business">Business Developer</option>
-                    <option value="tpe">TPE / PME</option>
-                </select>
-            </div>
+    <main style="max-width:900px; margin:2rem auto; padding:0 2rem;">
+        <div style="margin-bottom:2rem;">
+            <a href="workflows.html" style="color:var(--amber); display:inline-flex; align-items:center; gap:0.5rem;">← Retour aux workflows</a>
+            <h1 style="margin-top:1rem;">Configurer un workflow</h1>
+            <p style="color:var(--txt2);">Créez un workflow d'automatisation personnalisé selon votre métier.</p>
+        </div>
 
-            <!-- Sélecteur de template (dynamique) -->
-            <div class="form-group">
-                <label class="form-label">Template prédéfini</label>
-                <select id="workflow-template" class="form-input">
-                    <option value="">Choisissez d'abord un secteur</option>
-                </select>
-                <p class="form-help">Sélectionnez un template pour pré-remplir la configuration.</p>
-            </div>
+        <div class="glass-card" style="padding:2rem;">
+            <form id="workflow-form">
+                <!-- Nom du workflow -->
+                <div class="form-group">
+                    <label class="form-label">Nom du workflow</label>
+                    <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de visites immobilières">
+                </div>
 
-            <!-- Nom du workflow -->
-            <div class="form-group">
-                <label class="form-label">Nom du workflow</label>
-                <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de visites immobilières">
-            </div>
+                <!-- Secteur -->
+                <div class="form-group">
+                    <label class="form-label">Secteur d'activité</label>
+                    <select id="workflow-sector" class="form-input" required>
+                        <option value="">Choisissez votre secteur</option>
+                        <option value="immobilier">Immobilier</option>
+                        <option value="juridique">Juridique (Avocats / Huissiers)</option>
+                        <option value="business">Business Developer</option>
+                        <option value="tpe">TPE / PME</option>
+                    </select>
+                </div>
 
-            <!-- ... le reste du formulaire inchangé ... -->
-        </form>
-    </div>
-</main>
+                <!-- Template -->
+                <div class="form-group">
+                    <label class="form-label">Template prédéfini</label>
+                    <select id="workflow-template" class="form-input">
+                        <option value="">Sélectionnez d'abord un secteur</option>
+                    </select>
+                    <p class="form-help">Vous pourrez personnaliser la configuration après sélection.</p>
+                </div>
 
-  <script>
-    function showNotification(message, type = 'success') {
-        const container = document.getElementById('notification-container');
-        const notif = document.createElement('div');
-        notif.className = `notification ${type}`;
-        notif.textContent = message;
-        container.appendChild(notif);
-        setTimeout(() => notif.remove(), 3000);
-    }
+                <!-- Type caché -->
+                <input type="hidden" id="workflow-type" value="">
 
-    (async function() {
-        // Vérification utilisateur et MFA
-        const { user, error } = await getCurrentUser();
-        if (error || !user) {
-            window.location.href = 'login.html';
-            return;
+                <!-- ======================================== -->
+                <!-- Sections de configuration par type       -->
+                <!-- ======================================== -->
+
+                <!-- Section rappel_rdv -->
+                <div id="section-rappel_rdv" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Rappels de rendez-vous</h3>
+                    <div class="form-group">
+                        <label class="form-label">Agenda Google</label>
+                        <div style="display:flex; align-items:center; gap:1rem;">
+                            <span id="google-status" style="color:var(--txt2);">Non connecté</span>
+                            <button type="button" id="connect-google" class="btn btn-secondary">Connecter mon agenda</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Mots-clés (séparés par des virgules)</label>
+                        <input type="text" id="keywords" class="form-input" placeholder="ex: visite, rendez-vous, audience" value="visite,rendez-vous">
+                        <p class="form-help">Seuls les événements contenant ces mots seront pris en compte.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Canaux de rappel</label>
+                        <div style="display:flex; gap:1.5rem;">
+                            <label><input type="checkbox" id="channel-sms" value="sms" checked> SMS</label>
+                            <label><input type="checkbox" id="channel-email" value="email" checked> Email</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message pour J-1 (SMS)</label>
+                        <textarea id="message-j1-sms" class="form-input" rows="2">Bonjour {prenom}, rappel de votre rendez-vous demain à {heure}. Merci de confirmer par Oui ou Non.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message pour J-1 (Email)</label>
+                        <textarea id="message-j1-email" class="form-input" rows="2">Bonjour {prenom},&lt;br&gt;Ceci est un rappel pour votre rendez-vous du {date} à {heure}. Veuillez confirmer votre présence.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message pour H-2 (SMS)</label>
+                        <textarea id="message-h2-sms" class="form-input" rows="2">Votre rendez-vous est dans 2 heures. À tout de suite !</textarea>
+                    </div>
+                    <div class="form-help" style="background:var(--surface); padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                        <p><strong>Variables disponibles :</strong> {prenom}, {nom}, {date}, {heure}, {lieu}</p>
+                    </div>
+                </div>
+
+                <!-- Section qualification_lead -->
+                <div id="section-qualification_lead" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Qualification de leads</h3>
+                    <div class="form-group">
+                        <label class="form-label">Formulaire source</label>
+                        <select id="ql-form" class="form-input">
+                            <option value="lead_form">Formulaire de contact</option>
+                            <option value="estimation_form">Formulaire d'estimation</option>
+                            <option value="credit_form">Formulaire de crédit</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Seuil de score (0-100)</label>
+                        <input type="number" id="ql-threshold" class="form-input" value="70" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notifier l'agent</label>
+                        <label><input type="checkbox" id="ql-notify" checked> Envoyer une notification à l'agent</label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message de bienvenue (SMS)</label>
+                        <textarea id="ql-welcome-sms" class="form-input" rows="2">Merci pour votre demande, nous vous recontactons rapidement.</textarea>
+                    </div>
+                </div>
+
+                <!-- Section reporting -->
+                <div id="section-reporting" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Reporting automatique</h3>
+                    <div class="form-group">
+                        <label class="form-label">Fréquence</label>
+                        <select id="rep-frequency" class="form-input">
+                            <option value="weekly">Hebdomadaire (lundi)</option>
+                            <option value="monthly">Mensuel (1er du mois)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Destinataire email</label>
+                        <input type="email" id="rep-email" class="form-input" placeholder="client@exemple.fr">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Inclure les graphiques</label>
+                        <label><input type="checkbox" id="rep-charts" checked> Oui</label>
+                    </div>
+                </div>
+
+                <!-- Section estimation -->
+                <div id="section-estimation" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Estimation de bien</h3>
+                    <div class="form-group">
+                        <label class="form-label">API d'estimation</label>
+                        <select id="est-api" class="form-input">
+                            <option value="meilleursagents">Meilleurs Agents</option>
+                            <option value="seloger">SeLoger</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Seuil de notification (€)</label>
+                        <input type="number" id="est-threshold" class="form-input" value="500000" step="10000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notifier l'agent si estimation > seuil</label>
+                        <label><input type="checkbox" id="est-notify" checked> Oui</label>
+                    </div>
+                </div>
+
+                <!-- Section signature -->
+                <div id="section-signature" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Gestion des signatures</h3>
+                    <div class="form-group">
+                        <label class="form-label">Délai de relance (jours)</label>
+                        <input type="number" id="sig-delay" class="form-input" value="3" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Appel automatique après relance ?</label>
+                        <label><input type="checkbox" id="sig-call" checked> Oui</label>
+                    </div>
+                </div>
+
+                <!-- Section collecte_docs -->
+                <div id="section-collecte_docs" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Collecte de documents</h3>
+                    <div class="form-group">
+                        <label class="form-label">Liste des documents (séparés par des virgules)</label>
+                        <input type="text" id="cd-docs" class="form-input" value="pièce d'identité, justificatif de domicile" placeholder="ex: pièce d'identité, justificatif de domicile">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Délai de relance (jours)</label>
+                        <input type="number" id="cd-delay" class="form-input" value="3" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message de rappel (WhatsApp)</label>
+                        <textarea id="cd-whatsapp" class="form-input" rows="2">Rappel : documents manquants.</textarea>
+                    </div>
+                </div>
+
+                <!-- Section devis -->
+                <div id="section-devis" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Génération de devis</h3>
+                    <div class="form-group">
+                        <label class="form-label">Template de devis</label>
+                        <select id="dev-template" class="form-input">
+                            <option value="standard">Standard</option>
+                            <option value="premium">Premium</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Délai de relance (jours)</label>
+                        <input type="number" id="dev-delay" class="form-input" value="5" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Envoyer par SMS</label>
+                        <label><input type="checkbox" id="dev-sms" checked> Oui</label>
+                    </div>
+                </div>
+
+                <!-- Section relance_facture -->
+                <div id="section-relance_facture" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Relance de factures</h3>
+                    <div class="form-group">
+                        <label class="form-label">Délais de relance (jours, séparés par des virgules)</label>
+                        <input type="text" id="rf-delays" class="form-input" value="7,15,20" placeholder="ex: 7,15,20">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Canal pour la dernière relance</label>
+                        <select id="rf-last-channel" class="form-input">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="letter">Lettre recommandée</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section alerte_prix -->
+                <div id="section-alerte_prix" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Alerte baisse de prix</h3>
+                    <div class="form-group">
+                        <label class="form-label">Seuil de baisse (%)</label>
+                        <input type="number" id="ap-threshold" class="form-input" value="10" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message email</label>
+                        <textarea id="ap-email" class="form-input" rows="2">Le bien {{adresse}} a baissé de {{pourcentage}} %. Nouveau prix : {{prix}} €.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message WhatsApp</label>
+                        <textarea id="ap-whatsapp" class="form-input" rows="2">Baisse de prix ! {{adresse}} à {{prix}} €.</textarea>
+                    </div>
+                </div>
+
+                <!-- Section feedback -->
+                <div id="section-feedback" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Feedback post-visite</h3>
+                    <div class="form-group">
+                        <label class="form-label">Formulaire de feedback</label>
+                        <input type="text" id="fb-form" class="form-input" value="feedback_form" placeholder="ID du formulaire">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notifier en cas d'avis négatif</label>
+                        <label><input type="checkbox" id="fb-notify" checked> Oui</label>
+                    </div>
+                </div>
+
+                <!-- Section publication -->
+                <div id="section-publication" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Publication multi-plateformes</h3>
+                    <div class="form-group">
+                        <label class="form-label">Plateformes</label>
+                        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                            <label><input type="checkbox" id="pub-leboncoin" checked> Leboncoin</label>
+                            <label><input type="checkbox" id="pub-seloger" checked> SeLoger</label>
+                            <label><input type="checkbox" id="pub-pap" checked> PAP</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section credit -->
+                <div id="section-credit" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Simulation de crédit</h3>
+                    <div class="form-group">
+                        <label class="form-label">Montant minimum pour éligibilité (€)</label>
+                        <input type="number" id="credit-min" class="form-input" value="50000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Durée max (années)</label>
+                        <input type="number" id="credit-max-years" class="form-input" value="25">
+                    </div>
+                </div>
+
+                <!-- Section post_rdv -->
+                <div id="section-post_rdv" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Suivi post-rencontre</h3>
+                    <div class="form-group">
+                        <label class="form-label">Modèle de compte-rendu</label>
+                        <select id="post-template" class="form-input">
+                            <option value="standard">Standard</option>
+                            <option value="détaillé">Détaillé</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Destinataire (email)</label>
+                        <input type="email" id="post-email" class="form-input" placeholder="client@exemple.fr">
+                    </div>
+                </div>
+
+                <!-- Section culture -->
+                <div id="section-culture" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Adaptation culturelle (Belgique)</h3>
+                    <div class="form-group">
+                        <label class="form-label">Langue par défaut</label>
+                        <select id="cult-lang" class="form-input">
+                            <option value="fr">Français</option>
+                            <option value="nl">Néerlandais</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ton</label>
+                        <select id="cult-tone" class="form-input">
+                            <option value="chaleureux">Chaleureux</option>
+                            <option value="direct">Direct</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section linkedin -->
+                <div id="section-linkedin" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Relances LinkedIn</h3>
+                    <div class="form-group">
+                        <label class="form-label">Message type</label>
+                        <textarea id="li-message" class="form-input" rows="2">Bonjour, je vois que nous sommes connectés...</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Délai avant relance (jours)</label>
+                        <input type="number" id="li-delay" class="form-input" value="5">
+                    </div>
+                </div>
+
+                <!-- Section opportunites -->
+                <div id="section-opportunites" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Détection d'opportunités</h3>
+                    <div class="form-group">
+                        <label class="form-label">Mots-clés (séparés par des virgules)</label>
+                        <input type="text" id="opp-keywords" class="form-input" value="rachat, levée de fonds">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Source d'actualités</label>
+                        <select id="opp-source" class="form-input">
+                            <option value="newsapi">NewsAPI</option>
+                            <option value="google">Google News</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section emailing -->
+                <div id="section-emailing" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Campagne d'emailing</h3>
+                    <div class="form-group">
+                        <label class="form-label">Séquence (délais en jours, séparés par des virgules)</label>
+                        <input type="text" id="email-seq" class="form-input" value="0,3,7">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Templates (noms, séparés par des virgules)</label>
+                        <input type="text" id="email-tpl" class="form-input" value="intro,follow_up,last_chance">
+                    </div>
+                </div>
+
+                <!-- Section pipeline -->
+                <div id="section-pipeline" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Gestion de pipeline CRM</h3>
+                    <div class="form-group">
+                        <label class="form-label">Champ à surveiller</label>
+                        <input type="text" id="pipe-field" class="form-input" value="stage">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Seuil de blocage (jours)</label>
+                        <input type="number" id="pipe-days" class="form-input" value="15">
+                    </div>
+                </div>
+
+                <!-- Section stock -->
+                <div id="section-stock" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Alerte de stock</h3>
+                    <div class="form-group">
+                        <label class="form-label">Seuil de stock</label>
+                        <input type="number" id="stock-threshold" class="form-input" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fournisseur (email)</label>
+                        <input type="email" id="stock-supplier" class="form-input" placeholder="fournisseur@exemple.fr">
+                    </div>
+                </div>
+
+                <!-- Section commande -->
+                <div id="section-commande" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Commande fournisseur</h3>
+                    <div class="form-group">
+                        <label class="form-label">Produit</label>
+                        <input type="text" id="cmd-product" class="form-input" placeholder="ex: cartouches d'encre">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Quantité par défaut</label>
+                        <input type="number" id="cmd-quantity" class="form-input" value="1">
+                    </div>
+                </div>
+
+                <!-- Section chantier -->
+                <div id="section-chantier" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Suivi de chantier</h3>
+                    <div class="form-group">
+                        <label class="form-label">Canal de communication</label>
+                        <select id="chantier-channel" class="form-input">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="email">Email</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fréquence des mises à jour (jours)</label>
+                        <input type="number" id="chantier-frequency" class="form-input" value="7">
+                    </div>
+                </div>
+
+                <!-- Section satisfaction (TPE) -->
+                <div id="section-satisfaction" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Enquête de satisfaction</h3>
+                    <div class="form-group">
+                        <label class="form-label">Lien du questionnaire</label>
+                        <input type="url" id="sat-link" class="form-input" placeholder="https://forms.gle/...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Délai d'envoi (jours)</label>
+                        <input type="number" id="sat-delay" class="form-input" value="1">
+                    </div>
+                </div>
+
+                <!-- Section maintenance -->
+                <div id="section-maintenance" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Rappels de maintenance</h3>
+                    <div class="form-group">
+                        <label class="form-label">Type d'équipement</label>
+                        <input type="text" id="maint-equip" class="form-input" placeholder="ex: chaudière">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fréquence (mois)</label>
+                        <input type="number" id="maint-frequency" class="form-input" value="12">
+                    </div>
+                </div>
+
+                <!-- Section planning -->
+                <div id="section-planning" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Gestion des plannings</h3>
+                    <div class="form-group">
+                        <label class="form-label">Notifier le client avant intervention (heures)</label>
+                        <input type="number" id="plan-notif" class="form-input" value="24">
+                    </div>
+                </div>
+
+                <!-- Section absence -->
+                <div id="section-absence" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Répondeur d'absence</h3>
+                    <div class="form-group">
+                        <label class="form-label">Message d'absence (email)</label>
+                        <textarea id="abs-email" class="form-input" rows="2">Je suis absent du {{start}} au {{end}}. Pour toute urgence, contactez {{remplacant}}.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message WhatsApp</label>
+                        <textarea id="abs-whatsapp" class="form-input" rows="2">Absent, je vous répondrai à mon retour.</textarea>
+                    </div>
+                </div>
+
+                <!-- Section facturation -->
+                <div id="section-facturation" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Facturation récurrente</h3>
+                    <div class="form-group">
+                        <label class="form-label">Montant (€)</label>
+                        <input type="number" id="fact-amount" class="form-input" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Périodicité (mois)</label>
+                        <input type="number" id="fact-period" class="form-input" value="1">
+                    </div>
+                </div>
+
+                <!-- Section provision (juridique) -->
+                <div id="section-provision" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Calcul de provisions</h3>
+                    <div class="form-group">
+                        <label class="form-label">Type d'affaire</label>
+                        <select id="prov-type" class="form-input">
+                            <option value="contentieux">Contentieux</option>
+                            <option value="conseil">Conseil</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section echeances (juridique) -->
+                <div id="section-echeances" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Gestion des échéances</h3>
+                    <div class="form-group">
+                        <label class="form-label">Délais (jours avant audience)</label>
+                        <input type="text" id="ech-delays" class="form-input" value="15,7" placeholder="ex: 15,7">
+                    </div>
+                </div>
+
+                <!-- Section conclusions (juridique) -->
+                <div id="section-conclusions" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Envoi de conclusions</h3>
+                    <div class="form-group">
+                        <label class="form-label">Chiffrement</label>
+                        <label><input type="checkbox" id="conc-encrypt" checked> Chiffrer les pièces jointes</label>
+                    </div>
+                </div>
+
+                <!-- Section archivage (juridique) -->
+                <div id="section-archivage" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Archivage sécurisé</h3>
+                    <div class="form-group">
+                        <label class="form-label">Destination</label>
+                        <select id="arch-dest" class="form-input">
+                            <option value="coffre_fort">Coffre-fort numérique</option>
+                            <option value="drive">Google Drive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section confirmation_rdv (juridique) -->
+                <div id="section-confirmation_rdv" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Confirmation avec QR code</h3>
+                    <div class="form-group">
+                        <label class="form-label">Générer un QR code</label>
+                        <label><input type="checkbox" id="conf-qr" checked> Oui</label>
+                    </div>
+                </div>
+
+                <!-- Section prescription (juridique) -->
+                <div id="section-prescription" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Alerte de prescription</h3>
+                    <div class="form-group">
+                        <label class="form-label">Seuil (jours)</label>
+                        <input type="number" id="pres-days" class="form-input" value="90">
+                    </div>
+                </div>
+
+                <!-- Vous pouvez ajouter d'autres sections selon les besoins -->
+
+                <!-- Activer immédiatement -->
+                <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-top:2rem;">
+                    <input type="checkbox" id="active" checked>
+                    <label for="active">Activer le workflow immédiatement</label>
+                </div>
+
+                <!-- Boutons -->
+                <div style="display:flex; gap:1rem; margin-top:2rem;">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <a href="workflows.html" class="btn btn-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            container.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
         }
-        const factors = await listFactors();
-        if (!factors.data?.totp?.length) {
-            window.location.href = 'mfa-setup.html';
-            return;
-        }
 
-        // Références aux éléments
-        const sectorSelect = document.getElementById('workflow-sector');
-        const templateSelect = document.getElementById('workflow-template');
-        const workflowTypeInput = document.getElementById('workflow-type');
-
-        // --- Chargement des templates selon secteur ---
-        async function loadTemplates(sector) {
-            if (!sector) {
-                templateSelect.innerHTML = '<option value="">Sélectionnez d’abord un secteur</option>';
+        (async function() {
+            const { user, error } = await getCurrentUser();
+            if (error || !user) {
+                window.location.href = 'login.html';
                 return;
             }
-            try {
-                const { data, error } = await window.supabaseClient
-                    .from('workflow_templates')
-                    .select('id, name, description, config, type')
-                    .eq('sector', sector);
-                if (error) throw error;
-                templateSelect.innerHTML = '<option value="">Choisissez un template</option>';
-                data.forEach(t => {
-                    // On stocke la config et le type dans des attributs data
-                    templateSelect.innerHTML += `<option value="${t.id}" data-config='${JSON.stringify(t.config).replace(/'/g, "&#39;")}' data-type="${t.type}">${t.name}</option>`;
-                });
-            } catch (err) {
-                console.error('Erreur chargement templates:', err);
-                showNotification('Erreur chargement templates', 'error');
+            const factors = await listFactors();
+            if (!factors.data?.totp?.length) {
+                window.location.href = 'mfa-setup.html';
+                return;
             }
-        }
 
-        sectorSelect.addEventListener('change', (e) => {
-            loadTemplates(e.target.value);
-        });
+            const sectorSelect = document.getElementById('workflow-sector');
+            const templateSelect = document.getElementById('workflow-template');
+            const workflowTypeInput = document.getElementById('workflow-type');
+            const sections = document.querySelectorAll('.workflow-section');
 
-        // --- Pré-remplissage du formulaire lors du choix d'un template ---
-        templateSelect.addEventListener('change', (e) => {
-            const selected = e.target.selectedOptions[0];
-            if (!selected || !selected.value) return;
-            const config = JSON.parse(selected.dataset.config);
-            const type = selected.dataset.type;
+            function hideAllSections() {
+                sections.forEach(s => s.style.display = 'none');
+            }
 
-            // Mettre à jour le type caché
-            workflowTypeInput.value = type;
+            function showSection(type) {
+                hideAllSections();
+                const section = document.getElementById(`section-${type}`);
+                if (section) section.style.display = 'block';
+            }
 
-            // Réinitialiser les champs (optionnel)
-            // On pré-remplit selon le type
-            if (type === 'rappel_rdv') {
-                if (config.keywords) {
-                    document.getElementById('keywords').value = config.keywords.join(', ');
+            async function loadTemplates(sector) {
+                if (!sector) {
+                    templateSelect.innerHTML = '<option value="">Sélectionnez d’abord un secteur</option>';
+                    return;
                 }
-                if (config.channels) {
-                    document.getElementById('channel-sms').checked = config.channels.includes('sms');
-                    document.getElementById('channel-email').checked = config.channels.includes('email');
-                }
-                if (config.messages) {
-                    if (config.messages.j1?.sms) {
-                        document.getElementById('message-j1-sms').value = config.messages.j1.sms;
-                    }
-                    if (config.messages.j1?.email) {
-                        document.getElementById('message-j1-email').value = config.messages.j1.email;
-                    }
-                    if (config.messages.h2?.sms) {
-                        document.getElementById('message-h2-sms').value = config.messages.h2.sms;
-                    }
+                try {
+                    const { data, error } = await window.supabaseClient
+                        .from('workflow_templates')
+                        .select('id, name, description, config, type')
+                        .eq('sector', sector);
+                    if (error) throw error;
+                    templateSelect.innerHTML = '<option value="">Choisissez un template</option>';
+                    data.forEach(t => {
+                        const configStr = JSON.stringify(t.config).replace(/'/g, "&apos;");
+                        templateSelect.innerHTML += `<option value="${t.id}" data-config='${configStr}' data-type="${t.type}">${t.name}</option>`;
+                    });
+                } catch (err) {
+                    console.error('Erreur chargement templates:', err);
+                    showNotification('Erreur chargement templates', 'error');
                 }
             }
-            // Ajouter d'autres types ici (qualification_lead, etc.)
-        });
 
-        // --- Vérification connexion Google ---
-        async function checkGoogleConnection() {
-            try {
-                const { data, error } = await window.supabaseClient
-                    .from('user_tokens')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('provider', 'google')
-                    .maybeSingle();
+            sectorSelect.addEventListener('change', (e) => {
+                loadTemplates(e.target.value);
+            });
 
-                if (error) throw error;
-                const statusEl = document.getElementById('google-status');
-                if (data) {
-                    statusEl.innerHTML = '✅ Connecté';
-                    statusEl.style.color = 'var(--teal)';
-                } else {
-                    statusEl.innerHTML = '❌ Non connecté';
-                    statusEl.style.color = 'var(--txt2)';
+            templateSelect.addEventListener('change', (e) => {
+                const selected = e.target.selectedOptions[0];
+                if (!selected || !selected.value) return;
+                const config = JSON.parse(selected.dataset.config);
+                const type = selected.dataset.type;
+
+                workflowTypeInput.value = type;
+                showSection(type);
+
+                // Pré-remplissage selon le type
+                if (type === 'rappel_rdv') {
+                    if (config.keywords) document.getElementById('keywords').value = config.keywords.join(', ');
+                    if (config.channels) {
+                        document.getElementById('channel-sms').checked = config.channels.includes('sms');
+                        document.getElementById('channel-email').checked = config.channels.includes('email');
+                    }
+                    if (config.messages) {
+                        if (config.messages.j1?.sms) document.getElementById('message-j1-sms').value = config.messages.j1.sms;
+                        if (config.messages.j1?.email) document.getElementById('message-j1-email').value = config.messages.j1.email;
+                        if (config.messages.h2?.sms) document.getElementById('message-h2-sms').value = config.messages.h2.sms;
+                    }
+                } else if (type === 'qualification_lead') {
+                    if (config.form_id) document.getElementById('ql-form').value = config.form_id;
+                    if (config.score_threshold) document.getElementById('ql-threshold').value = config.score_threshold;
+                    if (config.notify_agent !== undefined) document.getElementById('ql-notify').checked = config.notify_agent;
+                    if (config.welcome_sms) document.getElementById('ql-welcome-sms').value = config.welcome_sms;
+                } else if (type === 'reporting') {
+                    if (config.frequency) document.getElementById('rep-frequency').value = config.frequency;
+                    if (config.recipient) document.getElementById('rep-email').value = config.recipient;
+                    if (config.include_charts !== undefined) document.getElementById('rep-charts').checked = config.include_charts;
+                } else if (type === 'estimation') {
+                    if (config.api) document.getElementById('est-api').value = config.api;
+                    if (config.threshold) document.getElementById('est-threshold').value = config.threshold;
+                    if (config.notify_agent !== undefined) document.getElementById('est-notify').checked = config.notify_agent;
+                } else if (type === 'signature') {
+                    if (config.relay_delay) document.getElementById('sig-delay').value = config.relay_delay;
+                    if (config.auto_call !== undefined) document.getElementById('sig-call').checked = config.auto_call;
+                } else if (type === 'collecte_docs') {
+                    if (config.documents) document.getElementById('cd-docs').value = config.documents.join(', ');
+                    if (config.reminder_delay) document.getElementById('cd-delay').value = config.reminder_delay;
+                    if (config.reminder_message) document.getElementById('cd-whatsapp').value = config.reminder_message;
+                } else if (type === 'devis') {
+                    if (config.template) document.getElementById('dev-template').value = config.template;
+                    if (config.reminder_delay) document.getElementById('dev-delay').value = config.reminder_delay;
+                    if (config.send_sms !== undefined) document.getElementById('dev-sms').checked = config.send_sms;
+                } else if (type === 'relance_facture') {
+                    if (config.delays) document.getElementById('rf-delays').value = config.delays.join(',');
+                    if (config.last_channel) document.getElementById('rf-last-channel').value = config.last_channel;
+                } else if (type === 'alerte_prix') {
+                    if (config.threshold) document.getElementById('ap-threshold').value = config.threshold;
+                    if (config.email_message) document.getElementById('ap-email').value = config.email_message;
+                    if (config.whatsapp_message) document.getElementById('ap-whatsapp').value = config.whatsapp_message;
+                } else if (type === 'feedback') {
+                    if (config.form_id) document.getElementById('fb-form').value = config.form_id;
+                    if (config.notify_negative !== undefined) document.getElementById('fb-notify').checked = config.notify_negative;
+                } else if (type === 'publication') {
+                    if (config.platforms) {
+                        document.getElementById('pub-leboncoin').checked = config.platforms.includes('leboncoin');
+                        document.getElementById('pub-seloger').checked = config.platforms.includes('seloger');
+                        document.getElementById('pub-pap').checked = config.platforms.includes('pap');
+                    }
+                } else if (type === 'credit') {
+                    if (config.min_amount) document.getElementById('credit-min').value = config.min_amount;
+                    if (config.max_years) document.getElementById('credit-max-years').value = config.max_years;
+                } else if (type === 'post_rdv') {
+                    if (config.template) document.getElementById('post-template').value = config.template;
+                    if (config.recipient) document.getElementById('post-email').value = config.recipient;
+                } else if (type === 'culture') {
+                    if (config.default_lang) document.getElementById('cult-lang').value = config.default_lang;
+                    if (config.tone) document.getElementById('cult-tone').value = config.tone;
+                } else if (type === 'linkedin') {
+                    if (config.message) document.getElementById('li-message').value = config.message;
+                    if (config.delay) document.getElementById('li-delay').value = config.delay;
+                } else if (type === 'opportunites') {
+                    if (config.keywords) document.getElementById('opp-keywords').value = config.keywords.join(', ');
+                    if (config.source) document.getElementById('opp-source').value = config.source;
+                } else if (type === 'emailing') {
+                    if (config.sequence) document.getElementById('email-seq').value = config.sequence.join(',');
+                    if (config.templates) document.getElementById('email-tpl').value = config.templates.join(',');
+                } else if (type === 'pipeline') {
+                    if (config.field) document.getElementById('pipe-field').value = config.field;
+                    if (config.days_threshold) document.getElementById('pipe-days').value = config.days_threshold;
+                } else if (type === 'stock') {
+                    if (config.threshold) document.getElementById('stock-threshold').value = config.threshold;
+                    if (config.supplier) document.getElementById('stock-supplier').value = config.supplier;
+                } else if (type === 'commande') {
+                    if (config.product) document.getElementById('cmd-product').value = config.product;
+                    if (config.default_quantity) document.getElementById('cmd-quantity').value = config.default_quantity;
+                } else if (type === 'chantier') {
+                    if (config.channel) document.getElementById('chantier-channel').value = config.channel;
+                    if (config.frequency) document.getElementById('chantier-frequency').value = config.frequency;
+                } else if (type === 'satisfaction') {
+                    if (config.link) document.getElementById('sat-link').value = config.link;
+                    if (config.delay) document.getElementById('sat-delay').value = config.delay;
+                } else if (type === 'maintenance') {
+                    if (config.equipment) document.getElementById('maint-equip').value = config.equipment;
+                    if (config.frequency) document.getElementById('maint-frequency').value = config.frequency;
+                } else if (type === 'planning') {
+                    if (config.notification_hours) document.getElementById('plan-notif').value = config.notification_hours;
+                } else if (type === 'absence') {
+                    if (config.email_message) document.getElementById('abs-email').value = config.email_message;
+                    if (config.whatsapp_message) document.getElementById('abs-whatsapp').value = config.whatsapp_message;
+                } else if (type === 'facturation') {
+                    if (config.amount) document.getElementById('fact-amount').value = config.amount;
+                    if (config.period_months) document.getElementById('fact-period').value = config.period_months;
+                } else if (type === 'provision') {
+                    if (config.case_type) document.getElementById('prov-type').value = config.case_type;
+                } else if (type === 'echeances') {
+                    if (config.delays) document.getElementById('ech-delays').value = config.delays.join(',');
+                } else if (type === 'conclusions') {
+                    if (config.encrypt !== undefined) document.getElementById('conc-encrypt').checked = config.encrypt;
+                } else if (type === 'archivage') {
+                    if (config.destination) document.getElementById('arch-dest').value = config.destination;
+                } else if (type === 'confirmation_rdv') {
+                    if (config.generate_qr !== undefined) document.getElementById('conf-qr').checked = config.generate_qr;
+                } else if (type === 'prescription') {
+                    if (config.days_threshold) document.getElementById('pres-days').value = config.days_threshold;
                 }
-            } catch (err) {
-                console.error('Erreur vérification Google:', err);
-                document.getElementById('google-status').innerHTML = '❌ Erreur';
-            }
-        }
-        await checkGoogleConnection();
+            });
 
-        // --- Gestion du retour OAuth Google ---
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('success') === 'google_connected') {
-            showNotification('Connexion Google réussie !', 'success');
+            async function checkGoogleConnection() {
+                try {
+                    const { data, error } = await window.supabaseClient
+                        .from('user_tokens')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('provider', 'google')
+                        .maybeSingle();
+                    if (error) throw error;
+                    const statusEl = document.getElementById('google-status');
+                    if (data) {
+                        statusEl.innerHTML = '✅ Connecté';
+                        statusEl.style.color = 'var(--teal)';
+                    } else {
+                        statusEl.innerHTML = '❌ Non connecté';
+                        statusEl.style.color = 'var(--txt2)';
+                    }
+                } catch (err) {
+                    console.error('Erreur vérification Google:', err);
+                    document.getElementById('google-status').innerHTML = '❌ Erreur';
+                }
+            }
             await checkGoogleConnection();
-        }
-        if (urlParams.get('error') === 'invalid_grant') {
-            showNotification('Erreur lors de la connexion Google. Veuillez réessayer.', 'error');
-        }
 
-        // --- Bouton de connexion Google ---
-        document.getElementById('connect-google').addEventListener('click', async () => {
-            const { user } = await getCurrentUser();
-            if (!user) {
-                showNotification('Vous devez être connecté.', 'error');
-                return;
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('success') === 'google_connected') {
+                showNotification('Connexion Google réussie !', 'success');
+                await checkGoogleConnection();
             }
-            const state = btoa(JSON.stringify({ userId: user.id }));
-            window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
-        });
-
-        // --- Si édition d'un workflow existant ---
-        const workflowId = urlParams.get('id');
-        if (workflowId) {
-            // À implémenter : charger le workflow et pré-remplir les champs
-            // (cela nécessite de récupérer le workflow et de remplir le secteur, template, etc.)
-            // Pour l'instant, on ignore.
-        }
-
-        // --- Soumission du formulaire ---
-        document.getElementById('workflow-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const name = document.getElementById('workflow-name').value;
-            const sector = sectorSelect.value;
-            const templateId = templateSelect.value;
-            const type = workflowTypeInput.value;
-
-            if (!sector) {
-                showNotification('Veuillez sélectionner un secteur', 'error');
-                return;
+            if (urlParams.get('error') === 'invalid_grant') {
+                showNotification('Erreur lors de la connexion Google. Veuillez réessayer.', 'error');
             }
 
-            // Construction de la config selon le type
-            let config = {};
-            if (type === 'rappel_rdv') {
-                const keywords = document.getElementById('keywords').value.split(',').map(k => k.trim());
-                const channels = [];
-                if (document.getElementById('channel-sms').checked) channels.push('sms');
-                if (document.getElementById('channel-email').checked) channels.push('email');
-                const messageJ1Sms = document.getElementById('message-j1-sms').value;
-                const messageJ1Email = document.getElementById('message-j1-email').value;
-                const messageH2Sms = document.getElementById('message-h2-sms').value;
-
-                config = {
-                    keywords,
-                    channels,
-                    messages: {
-                        j1: { sms: messageJ1Sms, email: messageJ1Email },
-                        h2: { sms: messageH2Sms }
-                    }
-                };
-            }
-            // Ajouter d'autres types de workflows ici
-
-            const active = document.getElementById('active').checked;
-
-            try {
-                let result;
-                if (workflowId) {
-                    result = await updateWorkflow(workflowId, {
-                        name,
-                        type,
-                        sector,
-                        template_id: templateId || null,
-                        config,
-                        active
-                    });
-                } else {
-                    result = await createWorkflow({
-                        user_id: user.id,
-                        name,
-                        type,
-                        sector,
-                        template_id: templateId || null,
-                        config,
-                        active
-                    });
+            document.getElementById('connect-google')?.addEventListener('click', async () => {
+                const { user } = await getCurrentUser();
+                if (!user) {
+                    showNotification('Vous devez être connecté.', 'error');
+                    return;
                 }
-                if (result.error) throw result.error;
-                showNotification('Workflow enregistré avec succès !', 'success');
-                setTimeout(() => window.location.href = 'workflows.html', 1500);
-            } catch (err) {
-                showNotification('Erreur : ' + err.message, 'error');
-            }
-        });
+                const state = btoa(JSON.stringify({ userId: user.id }));
+                window.location.href = `/api/auth-google?state=${encodeURIComponent(state)}`;
+            });
 
-        // --- Déconnexion ---
-        document.getElementById('logout').addEventListener('click', async () => {
-            await signOut();
-        });
-    })();
-</script>
+            const workflowId = urlParams.get('id');
+            if (workflowId) {
+                // TODO: charger les données du workflow existant
+            }
+
+            document.getElementById('workflow-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const name = document.getElementById('workflow-name').value;
+                const sector = sectorSelect.value;
+                const templateId = templateSelect.value;
+                const type = workflowTypeInput.value;
+
+                if (!sector) {
+                    showNotification('Veuillez sélectionner un secteur', 'error');
+                    return;
+                }
+                if (!type) {
+                    showNotification('Veuillez sélectionner un template ou un type', 'error');
+                    return;
+                }
+
+                let config = {};
+
+                // Construction de la config selon le type
+                if (type === 'rappel_rdv') {
+                    const keywords = document.getElementById('keywords').value.split(',').map(k => k.trim());
+                    const channels = [];
+                    if (document.getElementById('channel-sms').checked) channels.push('sms');
+                    if (document.getElementById('channel-email').checked) channels.push('email');
+                    config = {
+                        keywords,
+                        channels,
+                        messages: {
+                            j1: {
+                                sms: document.getElementById('message-j1-sms').value,
+                                email: document.getElementById('message-j1-email').value
+                            },
+                            h2: { sms: document.getElementById('message-h2-sms').value }
+                        }
+                    };
+                } else if (type === 'qualification_lead') {
+                    config = {
+                        form_id: document.getElementById('ql-form').value,
+                        score_threshold: parseInt(document.getElementById('ql-threshold').value),
+                        notify_agent: document.getElementById('ql-notify').checked,
+                        welcome_sms: document.getElementById('ql-welcome-sms').value
+                    };
+                } else if (type === 'reporting') {
+                    config = {
+                        frequency: document.getElementById('rep-frequency').value,
+                        recipient: document.getElementById('rep-email').value,
+                        include_charts: document.getElementById('rep-charts').checked
+                    };
+                } else if (type === 'estimation') {
+                    config = {
+                        api: document.getElementById('est-api').value,
+                        threshold: parseInt(document.getElementById('est-threshold').value),
+                        notify_agent: document.getElementById('est-notify').checked
+                    };
+                } else if (type === 'signature') {
+                    config = {
+                        relay_delay: parseInt(document.getElementById('sig-delay').value),
+                        auto_call: document.getElementById('sig-call').checked
+                    };
+                } else if (type === 'collecte_docs') {
+                    config = {
+                        documents: document.getElementById('cd-docs').value.split(',').map(d => d.trim()),
+                        reminder_delay: parseInt(document.getElementById('cd-delay').value),
+                        reminder_message: document.getElementById('cd-whatsapp').value
+                    };
+                } else if (type === 'devis') {
+                    config = {
+                        template: document.getElementById('dev-template').value,
+                        reminder_delay: parseInt(document.getElementById('dev-delay').value),
+                        send_sms: document.getElementById('dev-sms').checked
+                    };
+                } else if (type === 'relance_facture') {
+                    config = {
+                        delays: document.getElementById('rf-delays').value.split(',').map(d => parseInt(d.trim())),
+                        last_channel: document.getElementById('rf-last-channel').value
+                    };
+                } else if (type === 'alerte_prix') {
+                    config = {
+                        threshold: parseInt(document.getElementById('ap-threshold').value),
+                        email_message: document.getElementById('ap-email').value,
+                        whatsapp_message: document.getElementById('ap-whatsapp').value
+                    };
+                } else if (type === 'feedback') {
+                    config = {
+                        form_id: document.getElementById('fb-form').value,
+                        notify_negative: document.getElementById('fb-notify').checked
+                    };
+                } else if (type === 'publication') {
+                    const platforms = [];
+                    if (document.getElementById('pub-leboncoin').checked) platforms.push('leboncoin');
+                    if (document.getElementById('pub-seloger').checked) platforms.push('seloger');
+                    if (document.getElementById('pub-pap').checked) platforms.push('pap');
+                    config = { platforms };
+                } else if (type === 'credit') {
+                    config = {
+                        min_amount: parseInt(document.getElementById('credit-min').value),
+                        max_years: parseInt(document.getElementById('credit-max-years').value)
+                    };
+                } else if (type === 'post_rdv') {
+                    config = {
+                        template: document.getElementById('post-template').value,
+                        recipient: document.getElementById('post-email').value
+                    };
+                } else if (type === 'culture') {
+                    config = {
+                        default_lang: document.getElementById('cult-lang').value,
+                        tone: document.getElementById('cult-tone').value
+                    };
+                } else if (type === 'linkedin') {
+                    config = {
+                        message: document.getElementById('li-message').value,
+                        delay: parseInt(document.getElementById('li-delay').value)
+                    };
+                } else if (type === 'opportunites') {
+                    config = {
+                        keywords: document.getElementById('opp-keywords').value.split(',').map(k => k.trim()),
+                        source: document.getElementById('opp-source').value
+                    };
+                } else if (type === 'emailing') {
+                    config = {
+                        sequence: document.getElementById('email-seq').value.split(',').map(d => parseInt(d.trim())),
+                        templates: document.getElementById('email-tpl').value.split(',').map(t => t.trim())
+                    };
+                } else if (type === 'pipeline') {
+                    config = {
+                        field: document.getElementById('pipe-field').value,
+                        days_threshold: parseInt(document.getElementById('pipe-days').value)
+                    };
+                } else if (type === 'stock') {
+                    config = {
+                        threshold: parseInt(document.getElementById('stock-threshold').value),
+                        supplier: document.getElementById('stock-supplier').value
+                    };
+                } else if (type === 'commande') {
+                    config = {
+                        product: document.getElementById('cmd-product').value,
+                        default_quantity: parseInt(document.getElementById('cmd-quantity').value)
+                    };
+                } else if (type === 'chantier') {
+                    config = {
+                        channel: document.getElementById('chantier-channel').value,
+                        frequency: parseInt(document.getElementById('chantier-frequency').value)
+                    };
+                } else if (type === 'satisfaction') {
+                    config = {
+                        link: document.getElementById('sat-link').value,
+                        delay: parseInt(document.getElementById('sat-delay').value)
+                    };
+                } else if (type === 'maintenance') {
+                    config = {
+                        equipment: document.getElementById('maint-equip').value,
+                        frequency: parseInt(document.getElementById('maint-frequency').value)
+                    };
+                } else if (type === 'planning') {
+                    config = {
+                        notification_hours: parseInt(document.getElementById('plan-notif').value)
+                    };
+                } else if (type === 'absence') {
+                    config = {
+                        email_message: document.getElementById('abs-email').value,
+                        whatsapp_message: document.getElementById('abs-whatsapp').value
+                    };
+                } else if (type === 'facturation') {
+                    config = {
+                        amount: parseFloat(document.getElementById('fact-amount').value),
+                        period_months: parseInt(document.getElementById('fact-period').value)
+                    };
+                } else if (type === 'provision') {
+                    config = {
+                        case_type: document.getElementById('prov-type').value
+                    };
+                } else if (type === 'echeances') {
+                    config = {
+                        delays: document.getElementById('ech-delays').value.split(',').map(d => parseInt(d.trim()))
+                    };
+                } else if (type === 'conclusions') {
+                    config = {
+                        encrypt: document.getElementById('conc-encrypt').checked
+                    };
+                } else if (type === 'archivage') {
+                    config = {
+                        destination: document.getElementById('arch-dest').value
+                    };
+                } else if (type === 'confirmation_rdv') {
+                    config = {
+                        generate_qr: document.getElementById('conf-qr').checked
+                    };
+                } else if (type === 'prescription') {
+                    config = {
+                        days_threshold: parseInt(document.getElementById('pres-days').value)
+                    };
+                }
+
+                const active = document.getElementById('active').checked;
+
+                try {
+                    let result;
+                    if (workflowId) {
+                        result = await updateWorkflow(workflowId, {
+                            name,
+                            type,
+                            sector,
+                            template_id: templateId || null,
+                            config,
+                            active
+                        });
+                    } else {
+                        result = await createWorkflow({
+                            user_id: user.id,
+                            name,
+                            type,
+                            sector,
+                            template_id: templateId || null,
+                            config,
+                            active
+                        });
+                    }
+                    if (result.error) throw result.error;
+                    showNotification('Workflow enregistré avec succès !', 'success');
+                    setTimeout(() => window.location.href = 'workflows.html', 1500);
+                } catch (err) {
+                    showNotification('Erreur : ' + err.message, 'error');
+                }
+            });
+
+            document.getElementById('logout').addEventListener('click', async () => {
+                await signOut();
+            });
+        })();
+    </script>
 </body>
 </html>
