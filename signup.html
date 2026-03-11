@@ -32,7 +32,13 @@
                     <input type="email" id="email" class="form-input" required placeholder="vous@entreprise.fr">
                 </div>
 
-                <!-- Nouveau champ téléphone -->
+                <!-- Nom (optionnel) -->
+                <div class="form-group">
+                    <label class="form-label">Nom (optionnel)</label>
+                    <input type="text" id="name" class="form-input" placeholder="Votre nom">
+                </div>
+
+                <!-- Téléphone optionnel -->
                 <div class="form-group">
                     <label class="form-label">Téléphone (optionnel, pour 2FA par SMS)</label>
                     <input type="tel" id="phone" class="form-input" placeholder="+33612345678">
@@ -60,7 +66,7 @@
             </div>
 
             <!-- Bouton Google -->
-            <button class="btn btn-secondary btn-block" style="justify-content:center; gap:10px; margin-bottom:1rem;">
+            <button id="connect-google" class="btn btn-secondary btn-block" style="justify-content:center; gap:10px; margin-bottom:1rem;">
                 <svg width="16" height="16" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -76,37 +82,52 @@
             </p>
         </div>
 
+        <!-- Conteneur notifications -->
+        <div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
+
         <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
     </div>
 
     <script>
-        // Récupération des variables globales depuis config.js (SUPABASE_URL, SUPABASE_ANON_KEY)
-        const supabase = window.supabaseClient; // défini dans auth.js
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            container.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
 
         document.getElementById('signup-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const name = document.getElementById('name').value;
             const phone = document.getElementById('phone').value;
 
             try {
-                const { data, error } = await supabase.auth.signUp({ 
-                    email, 
-                    password,
-                    options: {
-                        data: {
-                            phone: phone || null // stocker le téléphone dans les métadonnées utilisateur
-                        },
-                        emailRedirectTo: window.location.origin + '/verify-email.html'
-                    }
+                const response = await fetch('/api/auth?action=signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, name, phone })
                 });
-                if (error) throw error;
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
 
-                alert('Inscription réussie ! Veuillez vérifier votre email pour confirmer votre compte.');
+                showNotification('Inscription réussie ! Vérifiez votre email.', 'success');
                 window.location.href = 'verify-email.html?email=' + encodeURIComponent(email);
             } catch (err) {
-                alert('Erreur : ' + err.message);
+                showNotification('Erreur : ' + err.message, 'error');
             }
+        });
+
+        // Connexion Google (redirection pour lier le compte)
+        document.getElementById('connect-google').addEventListener('click', async () => {
+            // L'utilisateur n'est pas encore connecté, on peut soit le rediriger vers Google OAuth avec un state vide,
+            // soit lui demander de d'abord se connecter. Pour simplifier, on le redirige vers Google OAuth sans userId.
+            // Dans auth.js, il faut gérer le cas où state ne contient pas userId (peut-être rediriger vers login après OAuth).
+            const state = btoa(JSON.stringify({})); // state vide ou avec un indicateur
+            window.location.href = `/api/auth?action=google-oauth&state=${encodeURIComponent(state)}`;
         });
     </script>
 </body>
