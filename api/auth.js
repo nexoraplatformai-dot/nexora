@@ -1,11 +1,18 @@
+// api/auth.js – Point d'entrée unique pour toutes les opérations d'authentification
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 import twilio from 'twilio';
+import sgMail from '@sendgrid/mail';
 
-// Initialisation des clients
+// Initialisation des clients Supabase
 const supabaseService = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const supabaseAnon = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+// Client Twilio (SMS)
 const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+
+// Client SendGrid (email)
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Client OAuth Google
 const oauth2Client = new google.auth.OAuth2(
@@ -19,8 +26,10 @@ export default async function handler(req, res) {
 
   try {
     switch (action) {
+      // ------------------------------------------------------------
+      // Google OAuth
+      // ------------------------------------------------------------
       case 'google-oauth': {
-        // ===== auth-google.js =====
         console.log('=== OAuth handler called ===');
         console.log('Method:', req.method);
         console.log('Query:', req.query);
@@ -109,8 +118,10 @@ export default async function handler(req, res) {
         return res.status(405).send('Method not allowed');
       }
 
+      // ------------------------------------------------------------
+      // Login (email + mot de passe)
+      // ------------------------------------------------------------
       case 'login': {
-        // ===== login.js =====
         if (req.method !== 'POST') {
           return res.status(405).json({ error: 'Method not allowed' });
         }
@@ -123,7 +134,7 @@ export default async function handler(req, res) {
           return res.status(401).json({ error: error.message });
         }
 
-        // Journalisation
+        // Journalisation (optionnel)
         await supabaseService.from('audit_logs').insert([{
           user_id: data.user.id,
           action: 'login',
@@ -134,17 +145,19 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
 
+      // ------------------------------------------------------------
+      // Signup (inscription)
+      // ------------------------------------------------------------
       case 'signup': {
-        // ===== signup.js =====
         if (req.method !== 'POST') return res.status(405).end();
 
-        const { email, password, name } = req.body;
+        const { email, password, name, phone } = req.body;
 
         const { data, error } = await supabaseService.auth.signUp({
           email,
           password,
           options: {
-            data: { name },
+            data: { name, phone },
             emailRedirectTo: `${req.headers.origin}/verify-email.html`
           }
         });
@@ -156,6 +169,7 @@ export default async function handler(req, res) {
             id: data.user.id,
             email,
             name,
+            phone,
             created_at: new Date().toISOString()
           }]);
         }
@@ -163,8 +177,10 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
 
+      // ------------------------------------------------------------
+      // Vérification MFA TOTP (code Google Authenticator)
+      // ------------------------------------------------------------
       case 'mfa-verify': {
-        // ===== mfa-verify.js =====
         if (req.method !== 'POST') return res.status(405).end();
 
         const { factorId, code } = req.body;
@@ -178,14 +194,17 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      // ------------------------------------------------------------
+      // Envoi de code par SMS
+      // ------------------------------------------------------------
       case 'send-sms': {
-        // ===== send-sms-code.js =====
         if (req.method !== 'POST') {
           return res.status(405).json({ error: 'Method not allowed' });
         }
 
-        const { userId } = req.body;
+        const { userId } = req.body; // ou email, selon votre logique
 
+        // Récupérer le téléphone de l'utilisateur
         const { data: user, error } = await supabaseService
           .from('profiles')
           .select('phone')
@@ -197,7 +216,7 @@ export default async function handler(req, res) {
         }
 
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         await supabaseService
           .from('sms_codes')
@@ -221,28 +240,20 @@ export default async function handler(req, res) {
         }
       }
 
+      // ------------------------------------------------------------
+      // Vérification du code SMS
+      // ------------------------------------------------------------
       case 'verify-sms': {
-        // ===== verify-sms-code.js =====
         if (req.method !== 'POST') {
           return res.status(405).json({ error: 'Method not allowed' });
         }
 
-        const { email, code } = req.body;
-
-        const { data: user, error: userError } = await supabaseService
-          .from('profiles')
-          .select('id')
-          .eq('email', email)
-          .single();
-
-        if (userError || !user) {
-          return res.status(400).json({ error: 'Utilisateur non trouvé' });
-        }
+        const { userId, code } = req.body; // ou email
 
         const { data: smsCode, error: codeError } = await supabaseService
           .from('sms_codes')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .single();
 
         if (codeError || !smsCode) {
@@ -260,11 +271,117 @@ export default async function handler(req, res) {
         await supabaseService
           .from('sms_codes')
           .update({ used: true })
-          .eq('user_id', user.id);
+          .eq('user_id', userId);
+
+        // Marquer l'utilisateur comme ayant activé la 2FA SMS (optionnel)
+        await supabaseService
+          .from('profiles')
+          .update({ mfa_method: 'sms' })
+          .eq('id', userId);
 
         return res.status(200).json({ success: true });
       }
 
+      // ------------------------------------------------------------
+      // Envoi de code par email
+      // ------------------------------------------------------------
+      case 'send-email-code': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email manquant' });
+
+        const { data: user, error: userError } = await supabaseService
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .single();
+
+        if (userError || !user) {
+          return res.status(400).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await supabaseService
+          .from('email_codes')
+          .upsert({
+            user_id: user.id,
+            code,
+            expires_at: expiresAt,
+            used: false
+          }, { onConflict: 'user_id' });
+
+        try {
+          await sgMail.send({
+            to: email,
+            from: process.env.EMAIL_FROM,
+            subject: 'Votre code de vérification NEXORA',
+            html: `<p>Votre code de vérification est : <strong>${code}</strong></p><p>Ce code est valable 10 minutes.</p>`
+          });
+          res.status(200).json({ success: true });
+        } catch (err) {
+          console.error(err);
+          res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email' });
+        }
+        break;
+      }
+
+      // ------------------------------------------------------------
+      // Vérification du code email
+      // ------------------------------------------------------------
+      case 'verify-email-code': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+        const { email, code } = req.body;
+
+        const { data: user, error: userError } = await supabaseService
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .single();
+
+        if (userError || !user) {
+          return res.status(400).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        const { data: emailCode, error: codeError } = await supabaseService
+          .from('email_codes')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (codeError || !emailCode) {
+          return res.status(400).json({ error: 'Aucun code demandé' });
+        }
+
+        if (emailCode.used || new Date() > new Date(emailCode.expires_at)) {
+          return res.status(400).json({ error: 'Code expiré ou déjà utilisé' });
+        }
+
+        if (emailCode.code !== code) {
+          return res.status(400).json({ error: 'Code incorrect' });
+        }
+
+        await supabaseService
+          .from('email_codes')
+          .update({ used: true })
+          .eq('user_id', user.id);
+
+        // Marquer l'utilisateur comme ayant activé la 2FA email
+        await supabaseService
+          .from('profiles')
+          .update({ mfa_method: 'email' })
+          .eq('id', user.id);
+
+        res.status(200).json({ success: true });
+        break;
+      }
+
+      // ------------------------------------------------------------
+      // Cas par défaut
+      // ------------------------------------------------------------
       default:
         return res.status(400).json({ error: 'Action non spécifiée ou invalide' });
     }

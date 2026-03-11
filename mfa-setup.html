@@ -7,15 +7,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1rem;">
-    <div style="width:100%; max-width:440px;">
-        <a href="index.html" style="display:inline-block; margin-bottom:2rem;">
+    <div style="width:100%; max-width:500px;">
+        <a href="dashboard.html" style="display:inline-block; margin-bottom:2rem;">
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="width:32px; height:32px; border-radius:10px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center; font-size:16px;">⚡</div>
                 <span style="font-size:20px; font-weight:800; letter-spacing:-0.045em; color:var(--txt);">NEXORA</span>
@@ -24,97 +23,235 @@
 
         <div class="glass-card" style="padding:2rem;">
             <h1 style="font-size:24px; font-weight:800; margin-bottom:0.5rem;">Sécurisez votre compte</h1>
-            <p style="color:var(--txt2); font-size:14px; margin-bottom:2rem;">
-                Scannez ce QR code avec Google Authenticator ou Authy, puis entrez le code à 6 chiffres.
-            </p>
+            <p style="color:var(--txt2); margin-bottom:2rem;">Choisissez votre méthode d'authentification à deux facteurs.</p>
 
-            <div style="display:flex; justify-content:center; margin-bottom:2rem;">
-                <div id="qrcode" style="background:white; padding:0.5rem; border-radius:12px;">
-                    <p style="color:var(--midnight);">Génération...</p>
+            <!-- Onglets de choix -->
+            <div style="display:flex; gap:0.5rem; margin-bottom:2rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+                <button id="tab-qr" class="btn btn-secondary active" style="flex:1;">QR Code</button>
+                <button id="tab-sms" class="btn btn-secondary" style="flex:1;">SMS</button>
+                <button id="tab-email" class="btn btn-secondary" style="flex:1;">Email</button>
+            </div>
+
+            <!-- Section QR Code -->
+            <div id="qr-section" style="display: block;">
+                <p style="color:var(--txt2); margin-bottom:1rem;">Scannez ce QR code avec Google Authenticator ou une application compatible.</p>
+                <div style="display:flex; justify-content:center; margin-bottom:1rem;">
+                    <div id="qrcode" style="background:white; padding:0.5rem; border-radius:12px;">
+                        <p style="color:var(--midnight);">Génération...</p>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Lien manuel de secours -->
-            <div id="manual-uri" style="display:none; margin-bottom:1.5rem; text-align:center;">
-                <p style="font-size:12px; color:var(--txt2); margin-bottom:0.5rem;">Si le QR code ne fonctionne pas :</p>
-                <a id="uri-link" href="#" target="_blank" style="color:var(--amber); font-size:11px; word-break:break-all;"></a>
-            </div>
-
-            <form id="mfa-form">
+                <div id="manual-uri" style="display:none; margin-bottom:1rem; text-align:center;">
+                    <p style="font-size:12px; color:var(--txt2);">Si le QR code ne fonctionne pas :</p>
+                    <a id="uri-link" href="#" target="_blank" style="color:var(--amber); font-size:11px; word-break:break-all;"></a>
+                </div>
                 <div class="form-group">
                     <label class="form-label">Code à 6 chiffres</label>
-                    <input type="text" id="code" maxlength="6" pattern="\d{6}" class="form-input" required style="text-align:center; font-size:18px; letter-spacing:2px;">
+                    <input type="text" id="code-qr" maxlength="6" pattern="\d{6}" class="form-input" required style="text-align:center; font-size:18px; letter-spacing:2px;">
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Activer la 2FA</button>
-            </form>
+                <button id="verify-qr" class="btn btn-primary btn-block">Activer la 2FA</button>
+            </div>
+
+            <!-- Section SMS -->
+            <div id="sms-section" style="display: none;">
+                <p style="color:var(--txt2); margin-bottom:1rem;">Un code vous sera envoyé par SMS.</p>
+                <div class="form-group">
+                    <label class="form-label">Numéro de téléphone</label>
+                    <input type="tel" id="sms-phone" class="form-input" placeholder="+33612345678" value="">
+                </div>
+                <button id="send-sms" class="btn btn-primary btn-block">Envoyer le code</button>
+                <div id="sms-verify-area" style="display:none; margin-top:1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Code reçu</label>
+                        <input type="text" id="code-sms" maxlength="6" pattern="\d{6}" class="form-input" style="text-align:center;">
+                    </div>
+                    <button id="verify-sms" class="btn btn-primary btn-block">Vérifier et activer</button>
+                </div>
+            </div>
+
+            <!-- Section Email -->
+            <div id="email-section" style="display: none;">
+                <p style="color:var(--txt2); margin-bottom:1rem;">Un code vous sera envoyé par email.</p>
+                <div class="form-group">
+                    <label class="form-label">Adresse email</label>
+                    <input type="email" id="email-address" class="form-input" placeholder="vous@exemple.fr" value="">
+                </div>
+                <button id="send-email" class="btn btn-primary btn-block">Envoyer le code</button>
+                <div id="email-verify-area" style="display:none; margin-top:1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Code reçu</label>
+                        <input type="text" id="code-email" maxlength="6" pattern="\d{6}" class="form-input" style="text-align:center;">
+                    </div>
+                    <button id="verify-email" class="btn btn-primary btn-block">Vérifier et activer</button>
+                </div>
+            </div>
+
+            <div style="text-align:center; margin-top:1.5rem;">
+                <a href="dashboard.html" style="color:var(--amber);">Ignorer pour l'instant</a>
+            </div>
         </div>
 
-        <p style="text-align:center; font-size:12px; color:var(--txt2); margin-top:2rem;">© 2026 nexora.platform.ai</p>
+        <!-- Conteneur notifications -->
+        <div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
     </div>
 
     <script>
-	function showNotification(message, type = 'success') {
-    const container = document.getElementById('notification-container');
-    const notif = document.createElement('div');
-    notif.className = `notification ${type}`;
-    notif.textContent = message;
-    container.appendChild(notif);
-    setTimeout(() => notif.remove(), 3000);
-}
-        // supabaseClient vient de auth.js, pas besoin de le recréer
-        let factorId = null;
-
-        async function setupMFA() {
-            try {
-                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-                if (userError || !user) {
-                    alert('Vous devez être connecté.');
-                    window.location.href = 'login.html';
-                    return;
-                }
-
-                const { data, error } = await supabaseClient.auth.mfa.enroll({ factorType: 'totp' });
-                if (error) throw error;
-
-                factorId = data.id;
-                const uri = data.totp.uri;
-
-                // Afficher le lien manuel
-                document.getElementById('manual-uri').style.display = 'block';
-                document.getElementById('uri-link').href = uri;
-                document.getElementById('uri-link').textContent = uri;
-
-                // Générer QR code
-                const qr = qrcode(0, 'M');
-                qr.addData(uri);
-                qr.make();
-                document.getElementById('qrcode').innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
-            } catch (err) {
-                document.getElementById('qrcode').innerHTML = '<p style="color:red;">Erreur : ' + err.message + '</p>';
-            }
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            container.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
         }
 
-        setupMFA();
-
-        document.getElementById('mfa-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const code = document.getElementById('code').value;
-
-            if (!factorId) {
-                alert('Configuration en cours, veuillez patienter...');
+        (async function() {
+            const { user, error } = await getCurrentUser();
+            if (error || !user) {
+                window.location.href = 'login.html';
                 return;
             }
 
-            try {
-                const { error } = await supabaseClient.auth.mfa.challengeAndVerify({ factorId, code });
-                if (error) throw error;
+            // Éléments DOM
+            const tabQr = document.getElementById('tab-qr');
+            const tabSms = document.getElementById('tab-sms');
+            const tabEmail = document.getElementById('tab-email');
+            const qrSection = document.getElementById('qr-section');
+            const smsSection = document.getElementById('sms-section');
+            const emailSection = document.getElementById('email-section');
+            const qrCodeDiv = document.getElementById('qrcode');
 
-                alert('MFA activée avec succès !');
-                window.location.href = 'dashboard.html';
-            } catch (err) {
-                alert('Code invalide : ' + err.message);
+            // Gestion des onglets
+            function setActiveTab(active) {
+                [tabQr, tabSms, tabEmail].forEach(t => t.classList.remove('active'));
+                active.classList.add('active');
+                qrSection.style.display = active === tabQr ? 'block' : 'none';
+                smsSection.style.display = active === tabSms ? 'block' : 'none';
+                emailSection.style.display = active === tabEmail ? 'block' : 'none';
             }
-        });
+            tabQr.addEventListener('click', () => setActiveTab(tabQr));
+            tabSms.addEventListener('click', () => setActiveTab(tabSms));
+            tabEmail.addEventListener('click', () => setActiveTab(tabEmail));
+
+            // --- QR Code ---
+            let factorId = null;
+            async function setupQR() {
+                try {
+                    const { data, error } = await enrollMFA();
+                    if (error) throw error;
+                    factorId = data.id;
+                    const uri = data.totp.uri;
+
+                    const qr = qrcode(0, 'M');
+                    qr.addData(uri);
+                    qr.make();
+                    qrCodeDiv.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
+
+                    // Afficher le lien manuel
+                    document.getElementById('manual-uri').style.display = 'block';
+                    document.getElementById('uri-link').href = uri;
+                    document.getElementById('uri-link').textContent = uri;
+                } catch (err) {
+                    showNotification('Erreur QR : ' + err.message, 'error');
+                }
+            }
+            setupQR();
+
+            document.getElementById('verify-qr').addEventListener('click', async () => {
+                const code = document.getElementById('code-qr').value;
+                if (!factorId || !code) return;
+                try {
+                    const { error } = await verifyMFA(factorId, code);
+                    if (error) throw error;
+                    showNotification('2FA activée avec succès !', 'success');
+                    setTimeout(() => window.location.href = 'dashboard.html', 1500);
+                } catch (err) {
+                    showNotification('Erreur : ' + err.message, 'error');
+                }
+            });
+
+            // --- SMS ---
+            document.getElementById('send-sms').addEventListener('click', async () => {
+                const phone = document.getElementById('sms-phone').value;
+                if (!phone) {
+                    showNotification('Veuillez saisir votre numéro', 'error');
+                    return;
+                }
+                try {
+                    const response = await fetch('/api/auth?action=send-sms', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.id, phone }) // ou juste phone ?
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    showNotification('Code envoyé !', 'success');
+                    document.getElementById('sms-verify-area').style.display = 'block';
+                } catch (err) {
+                    showNotification('Erreur : ' + err.message, 'error');
+                }
+            });
+
+            document.getElementById('verify-sms').addEventListener('click', async () => {
+                const code = document.getElementById('code-sms').value;
+                if (!code) return;
+                try {
+                    // Vérifier le code SMS (il faudrait un endpoint pour valider et activer la 2FA SMS)
+                    // Ici, on suppose que la vérification du code SMS active la 2FA (à implémenter côté serveur)
+                    const response = await fetch('/api/auth?action=verify-sms', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: user.id, code })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    showNotification('2FA SMS activée !', 'success');
+                    setTimeout(() => window.location.href = 'dashboard.html', 1500);
+                } catch (err) {
+                    showNotification('Erreur : ' + err.message, 'error');
+                }
+            });
+
+            // --- Email ---
+            document.getElementById('send-email').addEventListener('click', async () => {
+                const email = document.getElementById('email-address').value || user.email;
+                if (!email) {
+                    showNotification('Veuillez saisir votre email', 'error');
+                    return;
+                }
+                try {
+                    const response = await fetch('/api/auth?action=send-email-code', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    showNotification('Code envoyé par email !', 'success');
+                    document.getElementById('email-verify-area').style.display = 'block';
+                } catch (err) {
+                    showNotification('Erreur : ' + err.message, 'error');
+                }
+            });
+
+            document.getElementById('verify-email').addEventListener('click', async () => {
+                const code = document.getElementById('code-email').value;
+                const email = document.getElementById('email-address').value || user.email;
+                if (!code) return;
+                try {
+                    const response = await fetch('/api/auth?action=verify-email-code', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, code })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    showNotification('2FA email activée !', 'success');
+                    setTimeout(() => window.location.href = 'dashboard.html', 1500);
+                } catch (err) {
+                    showNotification('Erreur : ' + err.message, 'error');
+                }
+            });
+        })();
     </script>
 </body>
 </html>
