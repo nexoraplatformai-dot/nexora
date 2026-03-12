@@ -8,17 +8,65 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-	<link rel="stylesheet" href="css/tutorial.css">
-<script src="js/ui-improvements.js" defer></script>
-<script src="js/tutorial.js" defer></script>
-    <!-- Scripts dans l'ordre -->
+    <style>
+        /* Styles pour le tutoriel */
+        .tour-highlight {
+            outline: 3px solid var(--amber);
+            outline-offset: 2px;
+            box-shadow: 0 0 20px var(--amber-glow);
+            transition: all 0.2s;
+            z-index: 1001;
+            position: relative;
+        }
+        .tour-step {
+            position: absolute;
+            background: var(--card);
+            border: 1px solid var(--amber);
+            border-radius: 12px;
+            padding: 16px 20px;
+            max-width: 280px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1002;
+            color: var(--txt);
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            border-left: 4px solid var(--amber);
+        }
+        .tour-step h4 {
+            margin: 0 0 8px 0;
+            color: var(--amber);
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .tour-step p {
+            margin: 0 0 15px 0;
+            color: var(--txt2);
+            line-height: 1.5;
+        }
+        .tour-step button {
+            background: linear-gradient(135deg, var(--amber), var(--gold));
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 13px;
+        }
+        .tour-step button.skip {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--txt2);
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/workflows.js"></script>
 </head>
 <body style="background: var(--midnight); min-height:100vh;">
-    <!-- Navigation identique au dashboard -->
+    <!-- Navigation -->
     <nav style="background: var(--surface); border-bottom:1px solid var(--border); padding:0 2rem;">
         <div style="max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; height:60px;">
             <div style="display:flex; align-items:center; gap:1rem;">
@@ -26,14 +74,19 @@
                     <div style="width:30px; height:30px; border-radius:8px; background:linear-gradient(135deg,var(--amber),var(--gold)); display:flex; align-items:center; justify-content:center;">⚡</div>
                     <span style="font-weight:800;">NEXORA</span>
                 </a>
-                <span class="pill" style="background:var(--amber-glow); color:var(--amber); font-size:10px;">Workflows</span>
+                <span class="pill" style="background:var(--amber-glow); color:var(--amber); font-size:10px;">Bêta</span>
             </div>
             <div style="display:flex; align-items:center; gap:1rem;">
+                <button id="theme-toggle" class="btn btn-secondary" style="padding:6px 10px;" aria-label="Changer de thème">🌙</button>
+                <a href="dashboard.html" style="color:var(--txt2);">Accueil</a>
                 <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
                 <button id="logout" class="btn btn-secondary" style="padding:6px 12px; font-size:12px;">Déconnexion</button>
             </div>
         </div>
     </nav>
+
+    <!-- Conteneur notifications -->
+    <div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
 
     <main class="dashboard-container">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
@@ -54,59 +107,115 @@
         </div>
     </main>
 
-    <!-- Modal de création/édition (optionnel, peut rester mais pas utilisé) -->
-    <div id="workflow-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(8px); z-index:1000; align-items:center; justify-content:center;">
-        <div class="glass-card" style="max-width:500px; width:90%; padding:2rem; position:relative;">
-            <button id="close-modal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:var(--txt2); font-size:1.5rem; cursor:pointer;">&times;</button>
-            <h2 id="modal-title" style="margin-bottom:1.5rem;">Créer un workflow</h2>
-            <form id="workflow-form">
-                <div class="form-group">
-                    <label class="form-label">Nom du workflow</label>
-                    <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de rendez-vous">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Type</label>
-                    <select id="workflow-type" class="form-input" required>
-                        <option value="rappel_rdv">Rappel de rendez-vous</option>
-                        <option value="qualification_lead">Qualification de lead</option>
-                        <option value="relance_client">Relance client</option>
-                        <option value="reporting">Reporting</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Configuration (JSON)</label>
-                    <textarea id="workflow-config" class="form-input" rows="5" placeholder='{"triggers":[...],"actions":[...]}' required></textarea>
-                </div>
-                <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
-                    <input type="checkbox" id="active" checked>
-                    <label for="active">Activer immédiatement</label>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">Enregistrer</button>
-            </form>
-        </div>
-    </div>
-
     <script>
-	function showNotification(message, type = 'success') {
-    const container = document.getElementById('notification-container');
-    const notif = document.createElement('div');
-    notif.className = `notification ${type}`;
-    notif.textContent = message;
-    container.appendChild(notif);
-    setTimeout(() => notif.remove(), 3000);
-}
-        (async function() {
-            // Attendre le chargement du DOM
-            if (document.readyState === 'loading') {
-                await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
-            }
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            container.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
 
-            // Vérifier les fonctions nécessaires
-            if (typeof getWorkflows !== 'function') {
-                console.error('getWorkflows n\'est pas défini. Vérifiez que workflows.js est chargé.');
-                alert('Erreur critique : les fonctions de workflow ne sont pas disponibles. Rechargez la page.');
+        // ========== GESTION DU THEME ==========
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.body.classList.toggle('light-theme', savedTheme === 'light');
+            updateThemeButton(savedTheme === 'light');
+
+            document.getElementById('theme-toggle')?.addEventListener('click', () => {
+                const isLight = document.body.classList.toggle('light-theme');
+                const newTheme = isLight ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                updateThemeButton(isLight);
+            });
+        }
+
+        function updateThemeButton(isLight) {
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = isLight ? '🌞' : '🌙';
+        }
+
+        // ========== TUTORIEL ==========
+        let tourSteps = [];
+        let currentStep = 0;
+        let tourActive = false;
+
+        function startTour(steps) {
+            tourSteps = steps;
+            currentStep = 0;
+            tourActive = true;
+            showStep();
+        }
+
+        function showStep() {
+            if (!tourActive || currentStep >= tourSteps.length) {
+                endTour();
                 return;
             }
+            const step = tourSteps[currentStep];
+            const target = document.querySelector(step.selector);
+            if (!target) {
+                currentStep++;
+                showStep();
+                return;
+            }
+            document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+            target.classList.add('tour-highlight');
+
+            let bubble = document.getElementById('tour-bubble');
+            if (!bubble) {
+                bubble = document.createElement('div');
+                bubble.id = 'tour-bubble';
+                bubble.className = 'tour-step';
+                document.body.appendChild(bubble);
+            }
+            bubble.innerHTML = `
+                <h4>${step.title}</h4>
+                <p>${step.content}</p>
+                <div>
+                    <button onclick="nextStep()">Suivant</button>
+                    <button class="skip" onclick="endTour()">Ignorer</button>
+                </div>
+            `;
+
+            const targetRect = target.getBoundingClientRect();
+            const bubbleRect = bubble.getBoundingClientRect();
+            let top = targetRect.bottom + 10;
+            let left = targetRect.left + (targetRect.width / 2) - (bubbleRect.width / 2);
+            if (top + bubbleRect.height > window.innerHeight) top = targetRect.top - bubbleRect.height - 10;
+            if (left < 10) left = 10;
+            if (left + bubbleRect.width > window.innerWidth - 10) left = window.innerWidth - bubbleRect.width - 10;
+            bubble.style.top = top + 'px';
+            bubble.style.left = left + 'px';
+        }
+
+        function nextStep() {
+            currentStep++;
+            showStep();
+        }
+
+        function endTour() {
+            tourActive = false;
+            document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+            const bubble = document.getElementById('tour-bubble');
+            if (bubble) bubble.remove();
+        }
+
+        function initTutorial() {
+            if (localStorage.getItem('tourShown') !== 'true') {
+                const steps = [
+                    { selector: '#new-workflow', title: 'Nouveau workflow', content: 'Cliquez ici pour créer un workflow.' },
+                    { selector: '#workflows-list', title: 'Vos workflows', content: 'La liste de vos workflows apparaîtra ici.' },
+                ];
+                setTimeout(() => startTour(steps), 1000);
+                localStorage.setItem('tourShown', 'true');
+            }
+        }
+
+        // ========== LOGIQUE PRINCIPALE ==========
+        (async function() {
+            initTheme();
 
             // Vérification authentification et MFA
             const { user, error } = await getCurrentUser();
@@ -123,123 +232,101 @@
             // Charger et afficher les workflows
             await loadWorkflows();
 
-            // Gestionnaire pour créer un workflow (redirection directe)
-            document.getElementById('new-workflow')?.addEventListener('click', (e) => {
-                // Le lien fait déjà la redirection
+            // Gestionnaire pour créer un workflow (redirection)
+            document.getElementById('new-workflow').addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = 'workflow-edit.html';
             });
-
-            // Fermeture du modal si affiché (optionnel)
-            const closeBtn = document.getElementById('close-modal');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    document.getElementById('workflow-modal').style.display = 'none';
-                });
-            }
-            window.addEventListener('click', (e) => {
-                const modal = document.getElementById('workflow-modal');
-                if (e.target === modal) modal.style.display = 'none';
-            });
-
-            // Fonction pour charger les workflows
-            async function loadWorkflows() {
-                const container = document.getElementById('workflows-list');
-                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">Chargement...</div>';
-
-                try {
-                    const { data: workflows, error } = await getWorkflows();
-                    if (error) throw error;
-
-                    if (!workflows || workflows.length === 0) {
-                        container.innerHTML = `
-                            <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">
-                                <p>Aucun workflow pour le moment.</p>
-                                <a href="workflow-edit.html" class="btn btn-primary" style="margin-top:1rem;">Créer mon premier workflow</a>
-                            </div>
-                        `;
-                        return;
-                    }
-
-                    // Générer les cartes
-                    container.innerHTML = '';
-                    workflows.forEach(w => {
-                        const card = document.createElement('div');
-                        card.className = 'glass-card';
-                        card.style.padding = '1.5rem';
-                        const createdDate = new Date(w.created_at).toLocaleDateString();
-
-                        // Préparer la coche si dernière exécution existe
-                        let lastExecutedHtml = '';
-                        if (w.last_executed) {
-                            const lastDate = new Date(w.last_executed).toLocaleString();
-                            lastExecutedHtml = `<span style="color:var(--teal); margin-left:0.5rem;" title="Dernière exécution : ${lastDate}">✅</span>`;
-                        }
-
-                        card.innerHTML = `
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                <div>
-                                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.25rem;">
-                                        ${w.name} ${lastExecutedHtml}
-                                    </h3>
-                                    <p style="font-size:0.8rem; color:var(--amber); text-transform:uppercase;">${w.type}</p>
-                                </div>
-                                <div class="pill" style="background:${w.type==='rappel_rdv'?'var(--amber-glow)':'var(--teal-glow)'}">
-                                    ${createdDate}
-                                </div>
-                            </div>
-                            <div style="margin:1rem 0; font-size:0.9rem; color:var(--txt2);">
-                                <strong>Actions:</strong> ${w.config?.actions?.length || 0}
-                            </div>
-                            <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                                <button class="btn btn-secondary btn-edit" data-id="${w.id}" style="padding:0.3rem 0.8rem;">Modifier</button>
-                                <button class="btn btn-secondary btn-delete" data-id="${w.id}" style="padding:0.3rem 0.8rem; border-color:#EF4444; color:#EF4444;">Supprimer</button>
-                                <button class="btn btn-primary btn-execute" data-id="${w.id}" style="padding:0.3rem 1rem;">Exécuter</button>
-                            </div>
-                        `;
-                        container.appendChild(card);
-                    });
-
-                    // Ajouter les écouteurs pour les boutons
-                    document.querySelectorAll('.btn-edit').forEach(btn => {
-                        btn.addEventListener('click', async (e) => {
-                            const id = e.target.dataset.id;
-                            window.location.href = `workflow-edit.html?id=${id}`;
-                        });
-                    });
-
-                    document.querySelectorAll('.btn-delete').forEach(btn => {
-                        btn.addEventListener('click', async (e) => {
-                            const id = e.target.dataset.id;
-                            if (confirm('Supprimer ce workflow ?')) {
-                                const { error } = await deleteWorkflow(id);
-                                if (error) alert('Erreur : ' + error);
-                                else await loadWorkflows(); // Recharger la liste
-                            }
-                        });
-                    });
-
-                    document.querySelectorAll('.btn-execute').forEach(btn => {
-                        btn.addEventListener('click', async (e) => {
-                            const id = e.target.dataset.id;
-                            const result = await executeWorkflow(id);
-                            if (result.error) {
-                                alert('Erreur : ' + result.error);
-                            } else {
-                                alert('Workflow exécuté avec succès !');
-                                await loadWorkflows(); // Recharger pour mettre à jour la coche
-                            }
-                        });
-                    });
-
-                } catch (err) {
-                    container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--error);">Erreur : ${err.message}</div>`;
-                }
-            }
 
             // Déconnexion
             document.getElementById('logout').addEventListener('click', async () => {
                 await signOut();
             });
+
+            // Tutoriel
+            initTutorial();
         })();
+
+        async function loadWorkflows() {
+            const container = document.getElementById('workflows-list');
+            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">Chargement...</div>';
+
+            try {
+                const { data: workflows, error } = await getWorkflows();
+                if (error) throw error;
+
+                if (!workflows || workflows.length === 0) {
+                    container.innerHTML = `
+                        <div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--txt2);">
+                            <p>Aucun workflow pour le moment.</p>
+                            <a href="workflow-edit.html" class="btn btn-primary" style="margin-top:1rem;">Créer mon premier workflow</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = '';
+                workflows.forEach(w => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-card';
+                    card.style.padding = '1.5rem';
+                    const date = new Date(w.created_at).toLocaleDateString();
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.25rem;">${w.name}</h3>
+                                <p style="font-size:0.8rem; color:var(--amber); text-transform:uppercase;">${w.type}</p>
+                            </div>
+                            <div class="pill" style="background:${w.type==='rappel_rdv'?'var(--amber-glow)':'var(--teal-glow)'}">
+                                ${date}
+                            </div>
+                        </div>
+                        <div style="margin:1rem 0; font-size:0.9rem; color:var(--txt2);">
+                            <strong>Actions:</strong> ${w.config?.actions?.length || 0}
+                        </div>
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button class="btn btn-secondary btn-edit" data-id="${w.id}" style="padding:0.3rem 0.8rem;">Modifier</button>
+                            <button class="btn btn-secondary btn-delete" data-id="${w.id}" style="padding:0.3rem 0.8rem; border-color:#EF4444; color:#EF4444;">Supprimer</button>
+                            <button class="btn btn-primary btn-execute" data-id="${w.id}" style="padding:0.3rem 1rem;">Exécuter</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                document.querySelectorAll('.btn-edit').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.target.dataset.id;
+                        window.location.href = `workflow-edit.html?id=${id}`;
+                    });
+                });
+
+                document.querySelectorAll('.btn-delete').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.target.dataset.id;
+                        if (confirm('Supprimer ce workflow ?')) {
+                            const { error } = await deleteWorkflow(id);
+                            if (error) alert('Erreur : ' + error);
+                            else await loadWorkflows();
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.btn-execute').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const id = e.target.dataset.id;
+                        const result = await executeWorkflow(id);
+                        if (result.error) {
+                            alert('Erreur : ' + result.error);
+                        } else {
+                            alert('Workflow exécuté avec succès !');
+                        }
+                    });
+                });
+
+            } catch (err) {
+                container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem; color:var(--error);">Erreur : ${err.message}</div>`;
+            }
+        }
     </script>
 </body>
 </html>

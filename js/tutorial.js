@@ -1,4 +1,5 @@
-// Tutoriel interactif (exemple pour dashboard.html)
+// js/tutorial.js
+
 let tourSteps = [];
 let currentStep = 0;
 let tourActive = false;
@@ -38,7 +39,7 @@ function showStep() {
   bubble.innerHTML = `
     <h4>${step.title}</h4>
     <p>${step.content}</p>
-    <div>
+    <div class="tour-buttons">
       <button onclick="nextStep()">Suivant</button>
       <button class="skip" onclick="endTour()">Ignorer</button>
     </div>
@@ -58,28 +59,24 @@ function showStep() {
   bubble.style.left = left + 'px';
 }
 
-function nextStep() {
+window.nextStep = function() {
   currentStep++;
   showStep();
-}
+};
 
-function endTour() {
+window.endTour = function() {
   tourActive = false;
   document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
   const bubble = document.getElementById('tour-bubble');
   if (bubble) bubble.remove();
-}
+};
 
-// Initialiser le tutoriel si l'utilisateur est nouveau
-if (localStorage.getItem('tourShown') !== 'true') {
-  // Définir les étapes (exemple pour dashboard.html)
-  const steps = [
-    { selector: '.stat-card:first-child', title: 'Vos statistiques', content: 'Ici vous voyez le nombre de workflows actifs et d’autres indicateurs.' },
-    { selector: '.quick-actions', title: 'Actions rapides', content: 'Créez un nouveau workflow en un clic.' },
-    { selector: '#recent-workflows', title: 'Vos derniers workflows', content: 'Accédez directement à vos workflows récents et exécutez-les.' },
-    { selector: '.btn-primary', title: 'Nouveau workflow', content: 'Cliquez ici pour créer votre premier workflow automatique.' }
-  ];
-  // On peut lancer le tour après un court délai
-  setTimeout(() => startTour(steps), 1000);
-  localStorage.setItem('tourShown', 'true');
+// Fonction à appeler pour initialiser le tutoriel selon la page
+function initTutorial(pageSteps) {
+  // Vérifier dans localStorage si le tour a déjà été montré
+  if (localStorage.getItem('tourShown') !== 'true') {
+    // Démarrer le tour après un court délai pour que le DOM soit prêt
+    setTimeout(() => startTour(pageSteps), 1000);
+    localStorage.setItem('tourShown', 'true');
+  }
 }

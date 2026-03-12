@@ -8,6 +8,58 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        /* Styles pour le tutoriel */
+        .tour-highlight {
+            outline: 3px solid var(--amber);
+            outline-offset: 2px;
+            box-shadow: 0 0 20px var(--amber-glow);
+            transition: all 0.2s;
+            z-index: 1001;
+            position: relative;
+        }
+        .tour-step {
+            position: absolute;
+            background: var(--card);
+            border: 1px solid var(--amber);
+            border-radius: 12px;
+            padding: 16px 20px;
+            max-width: 280px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1002;
+            color: var(--txt);
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            border-left: 4px solid var(--amber);
+        }
+        .tour-step h4 {
+            margin: 0 0 8px 0;
+            color: var(--amber);
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .tour-step p {
+            margin: 0 0 15px 0;
+            color: var(--txt2);
+            line-height: 1.5;
+        }
+        .tour-step button {
+            background: linear-gradient(135deg, var(--amber), var(--gold));
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 13px;
+        }
+        .tour-step button.skip {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--txt2);
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
@@ -22,6 +74,7 @@
                 <span style="font-weight:800;">NEXORA</span>
             </a>
             <div style="display:flex; align-items:center; gap:1rem;">
+                <button id="theme-toggle" class="btn btn-secondary" style="padding:6px 10px;" aria-label="Changer de thème">🌙</button>
                 <a href="dashboard.html" style="color:var(--txt2);">Accueil</a>
                 <a href="profile.html" style="color:var(--txt2);">👤 Profil</a>
                 <button id="logout" class="btn btn-secondary" style="padding:6px 12px;">Déconnexion</button>
@@ -71,7 +124,8 @@
                 <!-- Type caché -->
                 <input type="hidden" id="workflow-type" value="">
 
-                <!-- ========== SECTIONS DE CONFIGURATION ========== -->
+                <!-- ========== SECTIONS DE CONFIGURATION PAR TYPE ========== -->
+
                 <!-- Section rappel_rdv (avec Google intégré) -->
                 <div id="section-rappel_rdv" class="workflow-section" style="display: none;">
                     <h3 style="margin:1.5rem 0 1rem;">Rappels de rendez-vous</h3>
@@ -125,7 +179,7 @@
                     </div>
                 </div>
 
-                <!-- Section qualification_lead (exemple minimal) -->
+                <!-- Section qualification_lead -->
                 <div id="section-qualification_lead" class="workflow-section" style="display: none;">
                     <h3 style="margin:1.5rem 0 1rem;">Qualification de leads</h3>
                     <div class="form-group">
@@ -150,7 +204,7 @@
                     </div>
                 </div>
 
-                <!-- Section reporting (exemple) -->
+                <!-- Section reporting -->
                 <div id="section-reporting" class="workflow-section" style="display: none;">
                     <h3 style="margin:1.5rem 0 1rem;">Reporting automatique</h3>
                     <div class="form-group">
@@ -590,7 +644,110 @@
             setTimeout(() => notif.remove(), 3000);
         }
 
+        // ========== GESTION DU THEME ==========
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.body.classList.toggle('light-theme', savedTheme === 'light');
+            updateThemeButton(savedTheme === 'light');
+
+            document.getElementById('theme-toggle')?.addEventListener('click', () => {
+                const isLight = document.body.classList.toggle('light-theme');
+                const newTheme = isLight ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                updateThemeButton(isLight);
+            });
+        }
+
+        function updateThemeButton(isLight) {
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = isLight ? '🌞' : '🌙';
+        }
+
+        // ========== TUTORIEL ==========
+        let tourSteps = [];
+        let currentStep = 0;
+        let tourActive = false;
+
+        function startTour(steps) {
+            tourSteps = steps;
+            currentStep = 0;
+            tourActive = true;
+            showStep();
+        }
+
+        function showStep() {
+            if (!tourActive || currentStep >= tourSteps.length) {
+                endTour();
+                return;
+            }
+            const step = tourSteps[currentStep];
+            const target = document.querySelector(step.selector);
+            if (!target) {
+                currentStep++;
+                showStep();
+                return;
+            }
+            document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+            target.classList.add('tour-highlight');
+
+            let bubble = document.getElementById('tour-bubble');
+            if (!bubble) {
+                bubble = document.createElement('div');
+                bubble.id = 'tour-bubble';
+                bubble.className = 'tour-step';
+                document.body.appendChild(bubble);
+            }
+            bubble.innerHTML = `
+                <h4>${step.title}</h4>
+                <p>${step.content}</p>
+                <div>
+                    <button onclick="nextStep()">Suivant</button>
+                    <button class="skip" onclick="endTour()">Ignorer</button>
+                </div>
+            `;
+
+            const targetRect = target.getBoundingClientRect();
+            const bubbleRect = bubble.getBoundingClientRect();
+            let top = targetRect.bottom + 10;
+            let left = targetRect.left + (targetRect.width / 2) - (bubbleRect.width / 2);
+            if (top + bubbleRect.height > window.innerHeight) {
+                top = targetRect.top - bubbleRect.height - 10;
+            }
+            if (left < 10) left = 10;
+            if (left + bubbleRect.width > window.innerWidth - 10) left = window.innerWidth - bubbleRect.width - 10;
+            bubble.style.top = top + 'px';
+            bubble.style.left = left + 'px';
+        }
+
+        function nextStep() {
+            currentStep++;
+            showStep();
+        }
+
+        function endTour() {
+            tourActive = false;
+            document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+            const bubble = document.getElementById('tour-bubble');
+            if (bubble) bubble.remove();
+        }
+
+        function initTutorial() {
+            if (localStorage.getItem('tourShown') !== 'true') {
+                const steps = [
+                    { selector: '#workflow-sector', title: 'Secteur d’activité', content: 'Choisissez votre secteur pour voir les templates adaptés.' },
+                    { selector: '#workflow-template', title: 'Template prédéfini', content: 'Sélectionnez un template parmi ceux de votre secteur.' },
+                    { selector: '#connect-google', title: 'Connecter Google Agenda', content: 'Si vous créez un workflow de rappels, vous pourrez synchroniser votre agenda.' },
+                    { selector: '#active', title: 'Activer immédiatement', content: 'Cochez pour activer le workflow dès sa création.' },
+                ];
+                setTimeout(() => startTour(steps), 1000);
+                localStorage.setItem('tourShown', 'true');
+            }
+        }
+
+        // ========== LOGIQUE PRINCIPALE ==========
         (async function() {
+            initTheme();
+
             const { user, error } = await getCurrentUser();
             if (error || !user) {
                 window.location.href = 'login.html';
@@ -1050,6 +1207,9 @@
             document.getElementById('logout').addEventListener('click', async () => {
                 await signOut();
             });
+
+            // Tutoriel
+            initTutorial();
         })();
     </script>
 </body>

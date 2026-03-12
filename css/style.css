@@ -783,4 +783,54 @@ h1, h2, h3, h4, h5, h6 {
     .pricing-card {
         min-height: auto;
     }
+	/* Tutoriel interactif */
+.tour-highlight {
+  position: relative;
+  z-index: 1000;
+  box-shadow: 0 0 0 4px var(--amber), 0 0 15px var(--amber-glow);
+  border-radius: 8px;
+  transition: box-shadow 0.2s;
+}
+
+.tour-step {
+  position: fixed;
+  z-index: 1001;
+  background: var(--card);
+  border: 1px solid var(--amber);
+  border-radius: 12px;
+  padding: 1.2rem;
+  max-width: 300px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  color: var(--txt);
+  font-size: 14px;
+}
+.tour-step h4 {
+  margin-bottom: 0.5rem;
+  color: var(--amber);
+}
+.tour-step p {
+  margin-bottom: 1rem;
+  color: var(--txt2);
+}
+.tour-step .tour-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.tour-step button {
+  background: var(--amber);
+  color: #000;
+  border: none;
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.tour-step button.skip {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--txt2);
+}
+.tour-step button:hover {
+  opacity: 0.9;
 }
