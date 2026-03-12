@@ -29,7 +29,6 @@
         </div>
     </nav>
 
-    <!-- Conteneur notifications -->
     <div id="notification-container" style="position:fixed; top:20px; right:20px; z-index:1000;"></div>
 
     <main style="max-width:900px; margin:2rem auto; padding:0 2rem;">
@@ -41,7 +40,7 @@
 
         <div class="glass-card" style="padding:2rem;">
             <form id="workflow-form">
-                <!-- Nom du workflow -->
+                <!-- Nom -->
                 <div class="form-group">
                     <label class="form-label">Nom du workflow</label>
                     <input type="text" id="workflow-name" class="form-input" required placeholder="ex: Rappels de visites immobilières">
@@ -71,30 +70,28 @@
                 <!-- Type caché -->
                 <input type="hidden" id="workflow-type" value="">
 
-                <!-- Section Agenda Google (visible uniquement pour rappel_rdv) -->
-                <div id="google-section" style="display: none; margin-bottom: 1.5rem;">
-                    <h3 style="margin:1rem 0;">Connexion à Google Agenda</h3>
-                    <div class="form-group">
+                <!-- ========== SECTIONS ========== -->
+                <!-- Section rappel_rdv (avec Google intégré) -->
+                <div id="section-rappel_rdv" class="workflow-section" style="display: none;">
+                    <h3 style="margin:1.5rem 0 1rem;">Rappels de rendez-vous</h3>
+                    
+                    <!-- Bloc Google Agenda -->
+                    <div style="margin-bottom:1.5rem;">
                         <label class="form-label">Agenda Google</label>
                         <div style="display:flex; align-items:center; gap:1rem;">
                             <span id="google-status" style="color:var(--txt2);">Non connecté</span>
                             <button type="button" id="connect-google" class="btn btn-secondary">Connecter mon agenda</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- ======================================== -->
-                <!-- Sections de configuration par type       -->
-                <!-- ======================================== -->
-
-                <!-- Section rappel_rdv -->
-                <div id="section-rappel_rdv" class="workflow-section" style="display: none;">
-                    <h3 style="margin:1.5rem 0 1rem;">Rappels de rendez-vous</h3>
+                    <!-- Mots-clés -->
                     <div class="form-group">
                         <label class="form-label">Mots-clés (séparés par des virgules)</label>
                         <input type="text" id="keywords" class="form-input" placeholder="ex: visite, rendez-vous, audience" value="visite,rendez-vous">
                         <p class="form-help">Seuls les événements contenant ces mots seront pris en compte.</p>
                     </div>
+
+                    <!-- Canaux -->
                     <div class="form-group">
                         <label class="form-label">Canaux de rappel</label>
                         <div style="display:flex; gap:1.5rem;">
@@ -102,6 +99,8 @@
                             <label><input type="checkbox" id="channel-email" value="email" checked> Email</label>
                         </div>
                     </div>
+
+                    <!-- Messages -->
                     <div class="form-group">
                         <label class="form-label">Message pour J-1 (SMS)</label>
                         <textarea id="message-j1-sms" class="form-input" rows="2">Bonjour {prenom}, rappel de votre rendez-vous demain à {heure}. Merci de confirmer par Oui ou Non.</textarea>
@@ -114,13 +113,13 @@
                         <label class="form-label">Message pour H-2 (SMS)</label>
                         <textarea id="message-h2-sms" class="form-input" rows="2">Votre rendez-vous est dans 2 heures. À tout de suite !</textarea>
                     </div>
-                    <div class="form-help" style="background:var(--surface); padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                    <div class="form-help" style="background:var(--surface); padding:1rem; border-radius:8px;">
                         <p><strong>Variables disponibles :</strong> {prenom}, {nom}, {date}, {heure}, {lieu}</p>
                     </div>
                 </div>
 
-                <!-- Ajoutez ici les autres sections (qualification_lead, reporting, etc.) comme dans votre version précédente -->
-                <!-- ... (pour gagner de la place, elles ne sont pas réécrites, mais elles doivent être présentes) ... -->
+                <!-- Autres sections (à compléter) -->
+                <!-- ... -->
 
                 <!-- Activer immédiatement -->
                 <div class="form-group" style="display:flex; align-items:center; gap:0.5rem; margin-top:2rem;">
@@ -148,7 +147,6 @@
         }
 
         (async function() {
-            // Vérification utilisateur et MFA
             const { user, error } = await getCurrentUser();
             if (error || !user) {
                 window.location.href = 'login.html';
@@ -163,10 +161,10 @@
             const sectorSelect = document.getElementById('workflow-sector');
             const templateSelect = document.getElementById('workflow-template');
             const workflowTypeInput = document.getElementById('workflow-type');
-            const googleSection = document.getElementById('google-section');
             const googleStatus = document.getElementById('google-status');
+            const connectBtn = document.getElementById('connect-google');
 
-            // ===== Fonction de vérification de la connexion Google =====
+            // ===== Vérification connexion Google =====
             async function checkGoogleConnection() {
                 try {
                     const { data, error } = await window.supabaseClient
@@ -188,11 +186,9 @@
                     googleStatus.innerHTML = '❌ Erreur';
                 }
             }
-
-            // Appel initial
             await checkGoogleConnection();
 
-            // ===== Gestion des templates =====
+            // ===== Chargement des templates =====
             async function loadTemplates(sector) {
                 if (!sector) {
                     templateSelect.innerHTML = '<option value="">Sélectionnez d’abord un secteur</option>';
@@ -217,28 +213,11 @@
 
             sectorSelect.addEventListener('change', (e) => {
                 loadTemplates(e.target.value);
-            });
-
-            // ===== Gestion de l'affichage des sections =====
-            function showSection(type) {
                 // Masquer toutes les sections
                 document.querySelectorAll('.workflow-section').forEach(s => s.style.display = 'none');
-                // Masquer la section Google par défaut
-                googleSection.style.display = 'none';
+            });
 
-                // Afficher la section correspondante
-                const section = document.getElementById(`section-${type}`);
-                if (section) {
-                    section.style.display = 'block';
-                    // Si le type est rappel_rdv, on affiche aussi la section Google
-                    if (type === 'rappel_rdv') {
-                        googleSection.style.display = 'block';
-                        // Rafraîchir le statut Google (au cas où il aurait changé)
-                        checkGoogleConnection();
-                    }
-                }
-            }
-
+            // ===== Affichage de la section selon le template =====
             templateSelect.addEventListener('change', (e) => {
                 const selected = e.target.selectedOptions[0];
                 if (!selected || !selected.value) return;
@@ -246,9 +225,21 @@
                 const type = selected.dataset.type;
 
                 workflowTypeInput.value = type;
-                showSection(type);
 
-                // Pré-remplissage selon le type (ajustez selon vos besoins)
+                // Masquer toutes les sections
+                document.querySelectorAll('.workflow-section').forEach(s => s.style.display = 'none');
+
+                // Afficher la section correspondante
+                const section = document.getElementById(`section-${type}`);
+                if (section) {
+                    section.style.display = 'block';
+                    // Si c'est rappel_rdv, on rafraîchit le statut Google
+                    if (type === 'rappel_rdv') {
+                        checkGoogleConnection();
+                    }
+                }
+
+                // Pré-remplissage selon le type (à compléter)
                 if (type === 'rappel_rdv') {
                     if (config.keywords) document.getElementById('keywords').value = config.keywords.join(', ');
                     if (config.channels) {
@@ -261,10 +252,10 @@
                         if (config.messages.h2?.sms) document.getElementById('message-h2-sms').value = config.messages.h2.sms;
                     }
                 }
-                // Ajoutez ici les autres types (qualification_lead, reporting, etc.)
+                // Ajouter d'autres types ici...
             });
 
-            // ===== Gestion du retour OAuth Google =====
+            // ===== Gestion retour OAuth =====
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('success') === 'google_connected') {
                 showNotification('Connexion Google réussie !', 'success');
@@ -274,8 +265,8 @@
                 showNotification('Erreur lors de la connexion Google. Veuillez réessayer.', 'error');
             }
 
-            // ===== Bouton de connexion Google =====
-            document.getElementById('connect-google')?.addEventListener('click', async () => {
+            // ===== Bouton connexion Google =====
+            connectBtn?.addEventListener('click', async () => {
                 const { user } = await getCurrentUser();
                 if (!user) {
                     showNotification('Vous devez être connecté.', 'error');
@@ -285,11 +276,10 @@
                 window.location.href = `/api/auth?action=google-oauth&state=${encodeURIComponent(state)}`;
             });
 
-            // ===== Gestion de l'édition (workflow existant) =====
+            // ===== Édition éventuelle =====
             const workflowId = urlParams.get('id');
             if (workflowId) {
-                // TODO: charger les données du workflow existant
-                // (à implémenter selon votre logique)
+                // TODO: charger les données existantes
             }
 
             // ===== Soumission du formulaire =====
@@ -327,7 +317,7 @@
                         }
                     };
                 }
-                // Ajoutez les autres types ici
+                // Ajouter d'autres types...
 
                 const active = document.getElementById('active').checked;
 
