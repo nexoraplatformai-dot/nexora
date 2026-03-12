@@ -27,7 +27,7 @@
 
             <!-- Onglets de choix -->
             <div style="display:flex; gap:0.5rem; margin-bottom:2rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
-                <button id="tab-qr" class="btn btn-secondary active" style="flex:1;">QR Code</button>
+                <button id="tab-qr" class="btn btn-secondary" style="flex:1;">QR Code</button>
                 <button id="tab-sms" class="btn btn-secondary" style="flex:1;">SMS</button>
                 <button id="tab-email" class="btn btn-secondary" style="flex:1;">Email</button>
             </div>
@@ -111,6 +111,14 @@
                 return;
             }
 
+            // Pré-remplir les champs avec les infos de l'utilisateur si disponibles
+            if (user.email) {
+                document.getElementById('email-address').value = user.email;
+            }
+            if (user.user_metadata?.phone) {
+                document.getElementById('sms-phone').value = user.user_metadata.phone;
+            }
+
             // Éléments DOM
             const tabQr = document.getElementById('tab-qr');
             const tabSms = document.getElementById('tab-sms');
@@ -118,19 +126,22 @@
             const qrSection = document.getElementById('qr-section');
             const smsSection = document.getElementById('sms-section');
             const emailSection = document.getElementById('email-section');
-            const qrCodeDiv = document.getElementById('qrcode');
 
             // Gestion des onglets
-            function setActiveTab(active) {
+            function setActiveTab(activeTab) {
                 [tabQr, tabSms, tabEmail].forEach(t => t.classList.remove('active'));
-                active.classList.add('active');
-                qrSection.style.display = active === tabQr ? 'block' : 'none';
-                smsSection.style.display = active === tabSms ? 'block' : 'none';
-                emailSection.style.display = active === tabEmail ? 'block' : 'none';
+                activeTab.classList.add('active');
+                qrSection.style.display = activeTab === tabQr ? 'block' : 'none';
+                smsSection.style.display = activeTab === tabSms ? 'block' : 'none';
+                emailSection.style.display = activeTab === tabEmail ? 'block' : 'none';
             }
+
             tabQr.addEventListener('click', () => setActiveTab(tabQr));
             tabSms.addEventListener('click', () => setActiveTab(tabSms));
             tabEmail.addEventListener('click', () => setActiveTab(tabEmail));
+
+            // Activer le premier onglet par défaut
+            setActiveTab(tabQr);
 
             // --- QR Code ---
             let factorId = null;
@@ -144,7 +155,7 @@
                     const qr = qrcode(0, 'M');
                     qr.addData(uri);
                     qr.make();
-                    qrCodeDiv.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
+                    document.getElementById('qrcode').innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0 });
 
                     // Afficher le lien manuel
                     document.getElementById('manual-uri').style.display = 'block';
@@ -173,18 +184,18 @@
             document.getElementById('send-sms').addEventListener('click', async () => {
                 const phone = document.getElementById('sms-phone').value;
                 if (!phone) {
-                    showNotification('Veuillez saisir votre numéro', 'error');
+                    showNotification('Veuillez saisir votre numéro de téléphone', 'error');
                     return;
                 }
                 try {
                     const response = await fetch('/api/auth?action=send-sms', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: user.id, phone }) // ou juste phone ?
+                        body: JSON.stringify({ userId: user.id, phone }) // On envoie userId et phone
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error);
-                    showNotification('Code envoyé !', 'success');
+                    showNotification('Code envoyé par SMS !', 'success');
                     document.getElementById('sms-verify-area').style.display = 'block';
                 } catch (err) {
                     showNotification('Erreur : ' + err.message, 'error');
@@ -193,10 +204,11 @@
 
             document.getElementById('verify-sms').addEventListener('click', async () => {
                 const code = document.getElementById('code-sms').value;
-                if (!code) return;
+                if (!code) {
+                    showNotification('Veuillez saisir le code', 'error');
+                    return;
+                }
                 try {
-                    // Vérifier le code SMS (il faudrait un endpoint pour valider et activer la 2FA SMS)
-                    // Ici, on suppose que la vérification du code SMS active la 2FA (à implémenter côté serveur)
                     const response = await fetch('/api/auth?action=verify-sms', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -236,7 +248,10 @@
             document.getElementById('verify-email').addEventListener('click', async () => {
                 const code = document.getElementById('code-email').value;
                 const email = document.getElementById('email-address').value || user.email;
-                if (!code) return;
+                if (!code) {
+                    showNotification('Veuillez saisir le code', 'error');
+                    return;
+                }
                 try {
                     const response = await fetch('/api/auth?action=verify-email-code', {
                         method: 'POST',

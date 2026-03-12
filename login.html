@@ -107,12 +107,14 @@
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
 
-                // Définir la session dans le client Supabase
+                // Définir la session dans le client Supabase (géré par auth.js, mais ici on utilise les fonctions existantes)
                 await window.supabaseClient.auth.setSession(data.session);
 
                 // Vérifier la MFA
                 const factors = await listFactors();
                 if (!factors.data?.totp?.length) {
+                    // Pas de facteur TOTP, on vérifie si l'utilisateur a configuré une autre méthode 2FA (SMS/email) ?
+                    // Pour l'instant on redirige vers mfa-setup
                     window.location.href = 'mfa-setup.html';
                 } else {
                     window.location.href = 'mfa-verify.html';
@@ -135,11 +137,15 @@
                 showNotification('Veuillez saisir votre numéro de téléphone', 'error');
                 return;
             }
+
+            // Appel à une API pour envoyer un code SMS. Ici on suppose que l'API attend le numéro de téléphone et renvoie un userId ou un email.
+            // On peut stocker temporairement le phone dans sessionStorage pour la vérification.
+            sessionStorage.setItem('loginPhone', phone);
             try {
                 const response = await fetch('/api/auth?action=send-sms', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone }) // L'API attend phone ou email ?
+                    body: JSON.stringify({ phone }) // si l'API accepte phone pour identifier l'utilisateur (il faut adapter l'API)
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
@@ -152,13 +158,9 @@
 
         // Connexion Google
         document.getElementById('connect-google').addEventListener('click', async () => {
-            const { user } = await getCurrentUser();
-            if (!user) {
-                showNotification('Vous devez être connecté pour lier votre agenda.', 'error');
-                return;
-            }
-            const state = btoa(JSON.stringify({ userId: user.id }));
-            window.location.href = `/api/auth?action=google-oauth&state=${encodeURIComponent(state)}`;
+            // Pour la connexion Google, on utilise l'OAuth. L'utilisateur n'est pas encore connecté, donc on redirige vers l'API sans state.
+            // L'API gérera le flux OAuth et redirigera vers la page appropriée.
+            window.location.href = '/api/auth?action=google-oauth&state=' + encodeURIComponent(JSON.stringify({}));
         });
     </script>
 </body>
