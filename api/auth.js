@@ -157,7 +157,7 @@ export default async function handler(req, res) {
         const { email, password, name, phone } = req.body;
 
         // Utiliser l'URL de base pour la redirection
-        const siteUrl = process.env.SITE_URL || process.env.VERCEL_URL || req.headers.origin || 'https://nexora-ruddy-omega.vercel.app';
+        const siteUrl = process.env.SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : req.headers.origin) || 'https://nexora-ruddy-omega.vercel.app';
 
         const { data, error } = await supabaseService.auth.signUp({
           email,
@@ -167,6 +167,7 @@ export default async function handler(req, res) {
             emailRedirectTo: `${siteUrl}/verify-email.html`
           }
         });
+        console.log('siteUrl utilisé :', siteUrl);
 
         if (error) return res.status(400).json({ error: error.message });
 
