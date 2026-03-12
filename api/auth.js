@@ -21,6 +21,9 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
+// URL de base pour les redirections (priorité à la variable d'environnement, sinon origine de la requête)
+const baseUrl = process.env.SITE_URL || process.env.VERCEL_URL || (req && req.headers.origin) || 'https://nexora-ruddy-omega.vercel.app';
+
 export default async function handler(req, res) {
   const { action } = req.query; // L'action est passée en paramètre GET
 
@@ -146,19 +149,22 @@ export default async function handler(req, res) {
       }
 
       // ------------------------------------------------------------
-      // Signup (inscription)
+      // Signup (inscription) avec redirection dynamique
       // ------------------------------------------------------------
       case 'signup': {
         if (req.method !== 'POST') return res.status(405).end();
 
         const { email, password, name, phone } = req.body;
 
+        // Utiliser l'URL de base pour la redirection
+        const siteUrl = process.env.SITE_URL || process.env.VERCEL_URL || req.headers.origin || 'https://nexora-ruddy-omega.vercel.app';
+
         const { data, error } = await supabaseService.auth.signUp({
           email,
           password,
           options: {
             data: { name, phone },
-            emailRedirectTo: `${req.headers.origin}/verify-email.html`
+            emailRedirectTo: `${siteUrl}/verify-email.html`
           }
         });
 
